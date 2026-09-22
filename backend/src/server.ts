@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import { prisma } from "./lib/prisma";
+import roomRoutes from "./routes/room.routes.js";
+import { errorMiddleware } from "./middleware/error.middleware.js";
 
 dotenv.config();
 
@@ -18,15 +19,11 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.get("/api/rooms", async (req, res) => {
-  const rooms = await prisma.room.findMany({
-    include: {
-      roomType: true,
-    },
-  });
-  res.json(rooms);
-});
+app.use("/api/rooms", roomRoutes);
 
+app.use(errorMiddleware);
+
+// Health check endpoint
 app.get("/api/health", (_req, res) => {
   res.json({
     message: "StayInn API is running",
