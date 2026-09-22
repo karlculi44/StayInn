@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String   @unique
+  password  String
+  role      Role     @default(GUEST)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+}
+
+enum Role {
+  GUEST
+  ADMIN
+}
+
+model RoomType {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  description   String
+  capacity      Int
+  pricePerNight Decimal
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  rooms Room[]
+}
+
+model Room {
+  id         String     @id @default(uuid())
+  roomNumber String     @unique
+  status     RoomStatus @default(AVAILABLE)
+
+  roomTypeId String
+  roomType   RoomType   @relation(fields: [roomTypeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+}
+
+enum RoomStatus {
+  AVAILABLE
+  MAINTENANCE
+  INACTIVE
+}
+
+model Reservation {
+  id         String            @id @default(uuid())
+  checkIn    DateTime
+  checkOut   DateTime
+  guests     Int
+  totalAmount Decimal
+  status     ReservationStatus @default(PENDING)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
