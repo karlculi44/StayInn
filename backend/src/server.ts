@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import { prisma } from "./lib/prisma";
 
 dotenv.config();
 
@@ -16,6 +17,15 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+
+app.get("/api/rooms", async (req, res) => {
+  const rooms = await prisma.room.findMany({
+    include: {
+      roomType: true,
+    },
+  });
+  res.json(rooms);
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({
