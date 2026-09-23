@@ -5,6 +5,12 @@ import { prisma } from "../lib/prisma.js";
 
 export const createReservation = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const userId = req.user.userId;
+
     const { checkIn, checkOut, guests, roomId } = req.body;
 
     const room = await prisma.room.findUnique({
@@ -65,7 +71,7 @@ export const createReservation = asyncHandler(
         guests,
         totalAmount,
         roomId,
-        userId: "786f3210-f520-4917-a659-9801a268d7a1",
+        userId,
       },
     });
 
