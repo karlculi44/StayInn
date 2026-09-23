@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import roomRoutes from "./routes/room.routes.js";
+import roomTypeRoutes from "./routes/roomType.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/rooms", roomRoutes);
+app.use("/api/room-types", roomTypeRoutes);
 
 app.use(errorMiddleware);
 

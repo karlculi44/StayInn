@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { getStringParam } from "../utils/getParam.js";
 
 export const getRooms = asyncHandler(async (req: Request, res: Response) => {
   const rooms = await prisma.room.findMany({
@@ -14,7 +15,8 @@ export const getRooms = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getRoomById = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = getStringParam(req.params.id, "room ID");
+
   const room = await prisma.room.findUnique({
     where: { id },
     include: {
@@ -66,7 +68,8 @@ export const createRoom = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = getStringParam(req.params.id, "room ID");
+
   const { roomNumber, roomTypeId, status } = req.body;
 
   const room = await prisma.room.findUnique({
@@ -113,7 +116,7 @@ export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const deleteRoom = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = getStringParam(req.params.id, "room ID");
 
   const room = await prisma.room.findUnique({
     where: { id },
