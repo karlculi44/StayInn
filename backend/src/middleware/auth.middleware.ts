@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { Role } from "@prisma/client";
 import { AppError } from "../utils/AppError.js";
 
 export const verifyToken = (
@@ -25,4 +26,18 @@ export const verifyToken = (
   } catch (err) {
     throw new AppError("Invalid or expired access token", 401);
   }
+};
+
+export const authorize = (...allowedRoles: Role[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      throw new AppError("Access denied", 403);
+    }
+
+    next();
+  };
 };
