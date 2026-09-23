@@ -183,3 +183,65 @@ export const cancelReservation = asyncHandler(
     res.json(cancelledReservation);
   },
 );
+
+export const getAllReservations = asyncHandler(
+  async (req: Request, res: Response) => {
+    const reservations = await prisma.reservation.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        room: {
+          include: {
+            roomType: true,
+          },
+        },
+      },
+      orderBy: {
+        checkIn: "desc",
+      },
+    });
+    res.json(reservations);
+  },
+);
+
+export const updateReservationStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getStringParam(req.params.id, "reservation ID");
+    const { status } = req.body;
+
+    const reservation = await prisma.reservation.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!reservation) {
+      throw new AppError("Reservation not found", 404);
+    }
+
+    if (reservation.status === "CANCELLED") {
+      throw new AppError("Reservation is already cancelled", 400);
+    }
+
+    if (reservation.status === "COMPLETED") {
+      throw new AppError("Completed reservations cannot be updated", 400);
+    }
+
+    const updatedReservation = await prisma.reservation.update({
+      where: {
+        id,
+      },
+      data: {
+        status,
+      },
+    });
+
+    res.json(updatedReservation);
+  },
+);

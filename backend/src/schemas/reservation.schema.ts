@@ -11,3 +11,7 @@ export const createReservationSchema = z
     message: "Check-out date must be after check-in date",
     path: ["checkOut"],
   });
+
+export const updateReservationStatusSchema = z.object({
+  status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED"]),
+});
