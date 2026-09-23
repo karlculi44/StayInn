@@ -67,7 +67,7 @@ export const createRoom = asyncHandler(async (req: Request, res: Response) => {
 
 export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { roomNumber, roomTypeId } = req.body;
+  const { roomNumber, roomTypeId, status } = req.body;
 
   const room = await prisma.room.findUnique({
     where: { id },
@@ -102,6 +102,7 @@ export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
     data: {
       roomNumber,
       roomTypeId,
+      status,
     },
     include: {
       roomType: true,

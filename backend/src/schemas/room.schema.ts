@@ -8,4 +8,5 @@ export const createRoomSchema = z.object({
 export const updateRoomSchema = z.object({
   roomNumber: z.string().min(1, "Room number is required").optional(),
   roomTypeId: z.uuid("Invalid room type ID").optional(),
+  status: z.enum(["AVAILABLE", "INACTIVE", "MAINTENANCE"]).optional(),
 });
