@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import roomRoutes from "./routes/room.routes.js";
 import roomTypeRoutes from "./routes/roomType.routes.js";
 import reservationRoutes from "./routes/reservation.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
 dotenv.config();
@@ -24,6 +25,7 @@ app.use(cookieParser());
 app.use("/api/rooms", roomRoutes);
 app.use("/api/room-types", roomTypeRoutes);
 app.use("/api/reservations", reservationRoutes);
+app.use("/api/auth", authRoutes);
 
 app.use(errorMiddleware);
 
