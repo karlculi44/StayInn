@@ -1,4 +1,5 @@
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import type { AvailabilityQuery } from "../schemas/room.schema.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -132,3 +133,26 @@ export const deleteRoom = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(204).send();
 });
+
+export const getAvailableRooms = async (req: Request, res: Response) => {
+  const { checkIn, checkOut } = req.validated as AvailabilityQuery;
+
+  const rooms = await prisma.room.findMany({
+    where: {
+      status: "AVAILABLE",
+      reservations: {
+        none: {
+          status: {
+            not: "CANCELLED",
+          },
+        },
+      },
+    },
+    include: {
+      roomType: true,
+      reservations: true,
+    },
+  });
+
+  res.json(rooms);
+};

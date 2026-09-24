@@ -10,3 +10,15 @@ export const updateRoomSchema = z.object({
   roomTypeId: z.uuid("Invalid room type ID").optional(),
   status: z.enum(["AVAILABLE", "INACTIVE", "MAINTENANCE"]).optional(),
 });
+
+export const availabilitySchema = z
+  .object({
+    checkIn: z.coerce.date(),
+    checkOut: z.coerce.date(),
+  })
+  .refine((data) => data.checkOut > data.checkIn, {
+    message: "Check-out must be after check-in",
+    path: ["checkOut"],
+  });
+
+export type AvailabilityQuery = z.infer<typeof availabilitySchema>;
