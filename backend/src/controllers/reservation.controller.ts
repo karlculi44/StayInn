@@ -3,6 +3,14 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { getStringParam } from "../utils/getParam.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
+import type { ReservationStatus } from "@prisma/client";
+
+const validTransitions: Record<ReservationStatus, ReservationStatus[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};
 
 export const createReservation = asyncHandler(
   async (req: Request, res: Response) => {
@@ -225,12 +233,13 @@ export const updateReservationStatus = asyncHandler(
       throw new AppError("Reservation not found", 404);
     }
 
-    if (reservation.status === "CANCELLED") {
-      throw new AppError("Reservation is already cancelled", 400);
-    }
+    const allowedStatuses = validTransitions[reservation.status];
 
-    if (reservation.status === "COMPLETED") {
-      throw new AppError("Completed reservations cannot be updated", 400);
+    if (!allowedStatuses.includes(status)) {
+      throw new AppError(
+        `Invalid status transition from ${reservation.status} to ${status}`,
+        400,
+      );
     }
 
     const updatedReservation = await prisma.reservation.update({
