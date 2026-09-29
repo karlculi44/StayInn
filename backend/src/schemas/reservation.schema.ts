@@ -7,11 +7,20 @@ export const createReservationSchema = z
     guests: z.number().int().positive("Guests must be greater than 0"),
     roomId: z.uuid("Invalid room ID"),
   })
+  .refine(
+    (data) => {
+      const today = new Date();
+
+      today.setHours(0, 0, 0, 0);
+
+      return data.checkIn >= today;
+    },
+    {
+      message: "Check-in cannot be in the past",
+      path: ["checkIn"],
+    },
+  )
   .refine((data) => data.checkOut > data.checkIn, {
-    message: "Check-out date must be after check-in date",
+    message: "Check-out must be after check-in",
     path: ["checkOut"],
   });
-
-export const updateReservationStatusSchema = z.object({
-  status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED"]),
-});
