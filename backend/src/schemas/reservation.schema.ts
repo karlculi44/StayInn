@@ -25,8 +25,21 @@ export const createReservationSchema = z
     path: ["checkOut"],
   });
 
-export const adminReservationQuerySchema = z.object({
-  status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]).optional(),
-});
+export const adminReservationQuerySchema = z
+  .object({
+    status: z
+      .enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"])
+      .optional(),
+
+    checkIn: z.coerce.date().optional(),
+    checkOut: z.coerce.date().optional(),
+  })
+  .refine(
+    (data) => !data.checkIn || !data.checkOut || data.checkOut > data.checkIn,
+    {
+      message: "Check-out must be after check-in",
+      path: ["checkOut"],
+    },
+  );
 
 export type AdminReservationQuery = z.infer<typeof adminReservationQuerySchema>;

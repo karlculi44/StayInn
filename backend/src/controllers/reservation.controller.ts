@@ -195,10 +195,25 @@ export const cancelReservation = asyncHandler(
 
 export const getAllReservations = asyncHandler(
   async (req: Request, res: Response) => {
-    const { status } = req.validated as AdminReservationQuery;
+    const { status, checkIn, checkOut } =
+      req.validated as AdminReservationQuery;
+
+    const where = {
+      ...(status && { status }),
+      ...(checkIn && {
+        checkIn: {
+          gte: checkIn,
+        },
+      }),
+      ...(checkOut && {
+        checkOut: {
+          lte: checkOut,
+        },
+      }),
+    };
 
     const reservations = await prisma.reservation.findMany({
-      where: status ? { status } : {},
+      where,
       include: {
         user: {
           select: {
@@ -218,6 +233,7 @@ export const getAllReservations = asyncHandler(
         checkIn: "desc",
       },
     });
+
     res.json(reservations);
   },
 );
