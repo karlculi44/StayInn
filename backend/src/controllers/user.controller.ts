@@ -83,3 +83,35 @@ export const updateUserRole = asyncHandler(
     res.json(updatedUser);
   },
 );
+
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  const id = getStringParam(req.params.id, "user ID");
+
+  const user = await prisma.user.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      reservations: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  if (user.reservations.length > 0) {
+    throw new AppError(
+      "User has existing reservations and cannot be deleted",
+      400,
+    );
+  }
+
+  await prisma.user.delete({
+    where: {
+      id,
+    },
+  });
+
+  res.status(204).send();
+});

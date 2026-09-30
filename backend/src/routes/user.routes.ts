@@ -3,6 +3,7 @@ import {
   getUsers,
   getUserById,
   updateUserRole,
+  deleteUser,
 } from "../controllers/user.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -19,5 +20,6 @@ router.patch(
   validate(updateUserRoleSchema),
   updateUserRole,
 );
+router.delete("/:id", verifyToken, authorize("ADMIN"), deleteUser);
 
 export default router;
