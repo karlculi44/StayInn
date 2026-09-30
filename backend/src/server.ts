@@ -7,6 +7,8 @@ import roomTypeRoutes from "./routes/roomType.routes.js";
 import reservationRoutes from "./routes/reservation.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
 dotenv.config();
@@ -28,6 +30,7 @@ app.use("/api/room-types", roomTypeRoutes);
 app.use("/api/reservations", reservationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorMiddleware);
 
