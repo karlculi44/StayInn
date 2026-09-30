@@ -24,3 +24,9 @@ export const createReservationSchema = z
     message: "Check-out must be after check-in",
     path: ["checkOut"],
   });
+
+export const adminReservationQuerySchema = z.object({
+  status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]).optional(),
+});
+
+export type AdminReservationQuery = z.infer<typeof adminReservationQuerySchema>;

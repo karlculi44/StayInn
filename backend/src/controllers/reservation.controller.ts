@@ -4,6 +4,7 @@ import { getStringParam } from "../utils/getParam.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import type { ReservationStatus } from "@prisma/client";
+import type { AdminReservationQuery } from "../schemas/reservation.schema.js";
 
 const validTransitions: Record<ReservationStatus, ReservationStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -194,7 +195,10 @@ export const cancelReservation = asyncHandler(
 
 export const getAllReservations = asyncHandler(
   async (req: Request, res: Response) => {
+    const { status } = req.validated as AdminReservationQuery;
+
     const reservations = await prisma.reservation.findMany({
+      where: status ? { status } : {},
       include: {
         user: {
           select: {
