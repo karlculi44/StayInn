@@ -64,18 +64,18 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     { expiresIn: "7d" },
   );
 
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
-
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
   res.status(200).json({
@@ -199,3 +199,58 @@ export const changePassword = asyncHandler(
     res.status(200).json({ message: "Password changed successfully" });
   },
 );
+
+export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    throw new AppError("Refresh token required", 401);
+  }
+
+  try {
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_TOKEN_SECRET as string,
+    ) as {
+      userId: string;
+    };
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: decoded.userId,
+      },
+    });
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const newAccessToken = jwt.sign(
+      {
+        userId: user.id,
+        role: user.role,
+      },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      {
+        expiresIn: "15m",
+      },
+    );
+
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.json({
+      message: "Access token refreshed",
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError("Invalid or expired refresh token", 401);
+  }
+});
