@@ -1,9 +1,12 @@
 export type Room = {
   id: string;
+  roomNumber: string;
   name: string;
-  location: string;
+  roomType: string;
   description: string;
-  price: number;
+  capacity: number;
+  pricePerNight: number;
+  status: "Available" | "Occupied" | "Maintenance";
   image: string;
   tag?: string;
   features: string[];
