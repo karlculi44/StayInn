@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authRateLimiter } from "../middleware/rateLimit.middleware.js";
 import {
   register,
   login,
@@ -19,10 +20,10 @@ import { verifyToken } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.post("/register", validate(registerSchema), register);
-router.post("/login", validate(loginSchema), login);
+router.post("/register", authRateLimiter, validate(registerSchema), register);
+router.post("/login", authRateLimiter, validate(loginSchema), login);
 router.post("/logout", logout);
-router.post("/refresh", refresh);
+router.post("/refresh", authRateLimiter, refresh);
 router.get("/me", verifyToken, getMe);
 router.patch("/me", verifyToken, validate(updateProfileSchema), updateProfile);
 router.patch(
