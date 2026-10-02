@@ -17,6 +17,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   reservations Reservation[]
+  refreshTokens RefreshToken[]
 }
 
 enum Role {
@@ -81,3 +82,12 @@ enum ReservationStatus {
   COMPLETED
 }
 
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

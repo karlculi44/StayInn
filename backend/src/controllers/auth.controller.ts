@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
+import hashToken from "../utils/hashToken.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
@@ -64,6 +65,16 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     { expiresIn: "7d" },
   );
 
+  const hashedRefreshToken = hashToken(refreshToken);
+
+  await prisma.refreshToken.create({
+    data: {
+      tokenHash: hashedRefreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    },
+  });
+
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -91,6 +102,17 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refreshToken;
+
+  if (refreshToken) {
+    const hashedRefreshToken = hashToken(refreshToken);
+    await prisma.refreshToken.deleteMany({
+      where: {
+        tokenHash: hashedRefreshToken,
+      },
+    });
+  }
+
   res.clearCookie("accessToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -215,6 +237,22 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
       userId: string;
     };
 
+    const tokenHash = hashToken(refreshToken);
+
+    const storedRefreshToken = await prisma.refreshToken.findUnique({
+      where: {
+        tokenHash,
+      },
+    });
+
+    if (!storedRefreshToken) {
+      throw new AppError("Refresh token not found", 401);
+    }
+
+    if (storedRefreshToken.expiresAt < new Date()) {
+      throw new AppError("Refresh token expired", 401);
+    }
+
     const user = await prisma.user.findUnique({
       where: {
         id: decoded.userId,
@@ -236,11 +274,47 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
       },
     );
 
+    const newRefreshToken = jwt.sign(
+      {
+        userId: user.id,
+      },
+      process.env.JWT_REFRESH_TOKEN_SECRET as string,
+      {
+        expiresIn: "7d",
+      },
+    );
+
+    const newRefreshTokenHash = hashToken(newRefreshToken);
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.refreshToken.delete({
+        where: {
+          tokenHash,
+        },
+      });
+
+      await tx.refreshToken.create({
+        data: {
+          tokenHash: newRefreshTokenHash,
+          userId: user.id,
+          expiresAt: newExpiresAt,
+        },
+      });
+    });
+
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.json({
