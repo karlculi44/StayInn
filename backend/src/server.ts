@@ -8,6 +8,7 @@ import reservationRoutes from "./routes/reservation.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import { cleanupRefreshTokens } from "./utils/cleanupRefreshTokens.js";
 
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
@@ -45,4 +46,17 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`StayInn server running on port ${PORT}`);
+
+  cleanupRefreshTokens().catch((error) => {
+    console.error("Initial refresh token cleanup failed:", error);
+  });
+
+  setInterval(
+    () => {
+      cleanupRefreshTokens().catch((error) => {
+        console.error("Refresh token cleanup failed:", error);
+      });
+    },
+    60 * 60 * 1000,
+  );
 });
