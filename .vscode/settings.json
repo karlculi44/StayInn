@@ -1,5 +1,12 @@
 {
   "chat.tools.terminal.autoApprove": {
-    "npx prisma": true
-  }
+    "npx prisma": true,
+    "/^npm install react-router-dom$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore"
 }
