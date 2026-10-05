@@ -12,6 +12,8 @@ export type User = {
 type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
+  setUser: (user: User | null) => void;
+  login: (user: User) => void;
   logout: () => Promise<void>;
 };
 

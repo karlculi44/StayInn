@@ -1,3 +1,4 @@
+import { useAuth } from "../../context/useAuth";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Input from "../../components/Input";
@@ -6,9 +7,11 @@ import { ErrorState } from "../../components/ui/States";
 import {
   login as loginUser,
   register as registerUser,
+  getMe,
 } from "../../services/auth.services";
 
 export default function Auth({ register = false }: { register?: boolean }) {
+  const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,7 +45,10 @@ export default function Auth({ register = false }: { register?: boolean }) {
         await loginUser(email, password);
       }
 
-      navigate("/dashboard");
+      const currentUser = await getMe();
+
+      setUser(currentUser);
+      navigate(currentUser.role === "ADMIN" ? "/admin" : "/dashboard");
     } catch {
       setError(
         register

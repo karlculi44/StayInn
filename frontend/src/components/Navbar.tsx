@@ -1,11 +1,20 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { ButtonLink } from "./ui/Button";
+import { useAuth } from "../context/useAuth";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
   { label: "My stays", to: "/dashboard" },
 ];
 export default function Navbar() {
+  const { user, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/");
+  }
+
   return (
     <header className="border-b border-black/5 bg-cream/95">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
@@ -29,12 +38,23 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <NavLink
-            to="/login"
-            className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
-          >
-            Sign in
-          </NavLink>
+          {!isLoading &&
+            (user ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
+              >
+                Logout
+              </button>
+            ) : (
+              <NavLink
+                to="/login"
+                className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
+              >
+                Sign in
+              </NavLink>
+            ))}
           <ButtonLink to="/register" className="px-4 py-2">
             Get started
           </ButtonLink>
