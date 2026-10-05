@@ -4,6 +4,10 @@
     "/^npm install react-router-dom$/": {
       "approve": true,
       "matchCommandLine": true
+    },
+    "/^npm run lint$/": {
+      "approve": true,
+      "matchCommandLine": true
     }
   },
   "css.lint.unknownAtRules": "ignore",

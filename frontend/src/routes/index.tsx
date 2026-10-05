@@ -3,53 +3,46 @@ import PublicLayout from "../layouts/PublicLayout";
 import GuestLayout from "../layouts/GuestLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import { AdminGuard, GuestGuard } from "./guards";
-import {
-  AdminPage,
-  AuthPage,
-  DashboardPage,
-  GuestPage,
-  HomePage,
-  RoomDetailPage,
-  RoomsPage,
-} from "../pages/Pages";
+import Home from "../pages/public/Home";
+import Rooms from "../pages/public/Rooms";
+import RoomDetails from "../pages/public/RoomDetails";
+import Login from "../pages/public/Login";
+import Register from "../pages/public/Register";
+import GuestDashboard from "../pages/guest/Dashboard";
+import GuestReservations from "../pages/guest/Reservations";
+import ReservationDetails from "../pages/guest/ReservationDetails";
+import Profile from "../pages/guest/Profile";
+import AdminDashboard from "../pages/admin/Dashboard";
+import AdminRooms from "../pages/admin/Rooms";
+import RoomTypes from "../pages/admin/RoomTypes";
+import AdminReservations from "../pages/admin/Reservations";
+import Users from "../pages/admin/Users";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route element={<PublicLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/rooms" element={<RoomsPage />} />
-        <Route path="/rooms/:id" element={<RoomDetailPage />} />
-        <Route path="/login" element={<AuthPage />} />
-        <Route path="/register" element={<AuthPage register />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/rooms" element={<Rooms />} />
+        <Route path="/rooms/:id" element={<RoomDetails />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Route>
       <Route element={<GuestGuard />}>
         <Route element={<GuestLayout />}>
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route
-            path="/reservations"
-            element={<GuestPage title="Reservations" />}
-          />
-          <Route
-            path="/reservations/:id"
-            element={<GuestPage title="Reservation details" />}
-          />
-          <Route path="/profile" element={<GuestPage title="Your profile" />} />
+          <Route path="/dashboard" element={<GuestDashboard />} />
+          <Route path="/reservations" element={<GuestReservations />} />
+          <Route path="/reservations/:id" element={<ReservationDetails />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>
       <Route element={<AdminGuard />}>
         <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/rooms" element={<AdminPage title="Rooms" />} />
-          <Route
-            path="/admin/room-types"
-            element={<AdminPage title="Room types" />}
-          />
-          <Route
-            path="/admin/reservations"
-            element={<AdminPage title="Reservations" />}
-          />
-          <Route path="/admin/users" element={<AdminPage title="Guests" />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/rooms" element={<AdminRooms />} />
+          <Route path="/admin/room-types" element={<RoomTypes />} />
+          <Route path="/admin/reservations" element={<AdminReservations />} />
+          <Route path="/admin/users" element={<Users />} />
         </Route>
       </Route>
     </Routes>
