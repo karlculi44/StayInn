@@ -1,4 +1,3 @@
-import ReservationCard from "../../components/ReservationCard";
 import SectionTitle from "../SectionTitle";
 import { useAuth } from "../../context/useAuth";
 
@@ -22,9 +21,7 @@ export default function Dashboard() {
       <div className="mt-10">
         <SectionTitle eyebrow="Next up" title="Your reservations" />
 
-        <div className="mt-6">
-          <ReservationCard />
-        </div>
+        <div className="mt-6">Your Reservations will appear here</div>
       </div>
     </div>
   );
