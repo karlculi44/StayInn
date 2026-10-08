@@ -4,6 +4,7 @@ import { formatCurrency } from "../../utils/format";
 import { rooms } from "../shared";
 import { getRoom, getAvailableRooms } from "../../services/room.service";
 import { createReservation } from "../../services/reservation.service";
+import axios from "axios";
 
 type Room = {
   id: string;
@@ -107,8 +108,14 @@ export default function RoomDetails() {
       );
 
       navigate(`/reservations/${reservation.id}`);
-    } catch {
-      setBookingError("Unable to create reservation.");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        setBookingError(
+          error.response?.data?.message || "Unable to create reservation.",
+        );
+      } else {
+        setBookingError("Unable to create reservation.");
+      }
     } finally {
       setIsBooking(false);
     }
