@@ -65,6 +65,12 @@ export default function RoomDetails() {
       return;
     }
 
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      setAvailabilityError("Check-out must be after check-in.");
+      setIsAvailable(null);
+      return;
+    }
+
     setIsChecking(true);
     setAvailabilityError("");
     setIsAvailable(null);
@@ -108,6 +114,30 @@ export default function RoomDetails() {
     }
   };
 
+  const handleGuestsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+
+    if (value >= 1 && value <= room.roomType.capacity) {
+      setGuests(value);
+    }
+  };
+
+  const getNights = () => {
+    if (!checkIn || !checkOut) {
+      return 0;
+    }
+
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+
+    const difference = end.getTime() - start.getTime();
+
+    return Math.ceil(difference / (1000 * 60 * 60 * 24));
+  };
+
+  const nights = getNights();
+  const total = nights * Number(room.roomType.pricePerNight);
+
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
       <Link to="/rooms" className="text-sm font-semibold text-sage">
@@ -115,11 +145,13 @@ export default function RoomDetails() {
       </Link>
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-        <img
-          src={staticRoom.image}
-          alt={room.roomType.name}
-          className="aspect-4/3 w-full rounded-3xl object-cover"
-        />
+        <div>
+          <img
+            src={staticRoom.image}
+            alt={room.roomType.name}
+            className="aspect-4/3 w-full rounded-3xl object-cover"
+          />
+        </div>
 
         <div className="py-2">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
@@ -169,6 +201,7 @@ export default function RoomDetails() {
                 <input
                   type="date"
                   value={checkIn}
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(event) => setCheckIn(event.target.value)}
                   className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
                 />
@@ -179,30 +212,67 @@ export default function RoomDetails() {
                 <input
                   type="date"
                   value={checkOut}
+                  min={checkIn || new Date().toISOString().split("T")[0]}
                   onChange={(event) => setCheckOut(event.target.value)}
                   className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
                 />
               </label>
-              <div>
-                <label htmlFor="guests" className="block text-sm font-semibold">
-                  Guests
-                </label>
 
+              <label htmlFor="guests" className="block text-sm font-semibold">
+                Guests
                 <input
                   id="guests"
                   type="number"
                   min={1}
                   max={room.roomType.capacity}
                   value={guests}
-                  onChange={(event) => setGuests(Number(event.target.value))}
+                  onChange={handleGuestsChange}
                   className="mt-2 w-full rounded-xl border px-4 py-3"
                 />
-
                 <p className="mt-1 text-xs text-muted">
                   Maximum {room.roomType.capacity} guests
                 </p>
-              </div>
+              </label>
             </div>
+
+            {isAvailable && nights > 0 && (
+              <div className="mt-4 rounded-2xl bg-white p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-gold">
+                  Booking summary
+                </p>
+
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted">Room</span>
+                    <span>{room.roomType.name}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted">Guests</span>
+                    <span>{guests}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted">Nights</span>
+                    <span>{nights}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted">Price per night</span>
+                    <span>
+                      ₱{Number(room.roomType.pricePerNight).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between font-semibold">
+                      <span>Total</span>
+                      <span>₱{total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
