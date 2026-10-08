@@ -21,3 +21,19 @@ export const cancelReservation = async (id: string) => {
 
   return response.data;
 };
+
+export const createReservation = async (
+  roomId: string,
+  checkIn: string,
+  checkOut: string,
+  guests: number,
+) => {
+  const response = await api.post("/reservations", {
+    roomId,
+    checkIn,
+    checkOut,
+    guests,
+  });
+
+  return response.data;
+};

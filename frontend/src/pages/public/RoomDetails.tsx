@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { formatCurrency } from "../../utils/format";
 import { rooms } from "../shared";
 import { getRoom, getAvailableRooms } from "../../services/room.service";
+import { createReservation } from "../../services/reservation.service";
 
 type Room = {
   id: string;
@@ -25,6 +26,10 @@ export default function RoomDetails() {
   const [availabilityError, setAvailabilityError] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+  const [guests, setGuests] = useState(1);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState("");
 
   const staticRoom = rooms.find((item) => item.id === id) ?? rooms[0];
 
@@ -76,6 +81,30 @@ export default function RoomDetails() {
       setAvailabilityError("Unable to check availability.");
     } finally {
       setIsChecking(false);
+    }
+  };
+
+  const handleBooking = async () => {
+    if (!room || !checkIn || !checkOut || !isAvailable) {
+      return;
+    }
+
+    setIsBooking(true);
+    setBookingError("");
+
+    try {
+      const reservation = await createReservation(
+        room.id,
+        checkIn,
+        checkOut,
+        guests,
+      );
+
+      navigate(`/reservations/${reservation.id}`);
+    } catch {
+      setBookingError("Unable to create reservation.");
+    } finally {
+      setIsBooking(false);
     }
   };
 
@@ -154,6 +183,25 @@ export default function RoomDetails() {
                   className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
                 />
               </label>
+              <div>
+                <label htmlFor="guests" className="block text-sm font-semibold">
+                  Guests
+                </label>
+
+                <input
+                  id="guests"
+                  type="number"
+                  min={1}
+                  max={room.roomType.capacity}
+                  value={guests}
+                  onChange={(event) => setGuests(Number(event.target.value))}
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                />
+
+                <p className="mt-1 text-xs text-muted">
+                  Maximum {room.roomType.capacity} guests
+                </p>
+              </div>
             </div>
 
             <button
@@ -164,6 +212,21 @@ export default function RoomDetails() {
             >
               {isChecking ? "Checking..." : "Check availability"}
             </button>
+
+            {isAvailable && (
+              <button
+                type="button"
+                onClick={handleBooking}
+                disabled={isBooking}
+                className="w-full rounded-xl bg-sage mt-2 px-6 py-3 font-semibold text-white disabled:opacity-50"
+              >
+                {isBooking ? "Booking..." : "Book this room"}
+              </button>
+            )}
+
+            {bookingError && (
+              <p className="text-sm text-red-600">{bookingError}</p>
+            )}
 
             {isAvailable === true && (
               <p className="mt-3 text-sm text-sage">
