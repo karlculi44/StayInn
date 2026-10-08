@@ -37,3 +37,18 @@ export const createReservation = async (
 
   return response.data;
 };
+
+// Admin-specific reservation services
+
+export const getAdminReservations = async () => {
+  const response = await api.get("/reservations/admin");
+  return response.data;
+};
+
+export const updateReservationStatus = async (id: string, status: string) => {
+  const response = await api.patch(`/reservations/${id}/status`, {
+    status,
+  });
+
+  return response.data;
+};

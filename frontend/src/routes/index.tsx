@@ -1,8 +1,8 @@
 import { Route, Routes } from "react-router-dom";
+import { AdminGuard, GuestGuard } from "./guards";
 import PublicLayout from "../layouts/PublicLayout";
 import GuestLayout from "../layouts/GuestLayout";
 import AdminLayout from "../layouts/AdminLayout";
-import { AdminGuard, GuestGuard } from "./guards";
 import Home from "../pages/public/Home";
 import Rooms from "../pages/public/Rooms";
 import RoomDetails from "../pages/public/RoomDetails";
