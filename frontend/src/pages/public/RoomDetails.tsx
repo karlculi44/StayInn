@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ButtonLink } from "../../components/ui/Button";
 import { formatCurrency } from "../../utils/format";
 import { rooms } from "../shared";
-import { getRoom } from "../../services/room.service";
+import { getRoom, getAvailableRooms } from "../../services/room.service";
 
 type Room = {
   id: string;
@@ -19,7 +18,11 @@ type Room = {
 
 export default function RoomDetails() {
   const { id } = useParams();
-
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [availabilityError, setAvailabilityError] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,6 +54,30 @@ export default function RoomDetails() {
   if (!room) {
     return <div>Room not found.</div>;
   }
+
+  const handleCheckAvailability = async () => {
+    if (!checkIn || !checkOut || !room) {
+      return;
+    }
+
+    setIsChecking(true);
+    setAvailabilityError("");
+    setIsAvailable(null);
+
+    try {
+      const availableRooms = await getAvailableRooms(checkIn, checkOut);
+
+      const roomIsAvailable = availableRooms.some(
+        (availableRoom: Room) => availableRoom.id === room.id,
+      );
+
+      setIsAvailable(roomIsAvailable);
+    } catch {
+      setAvailabilityError("Unable to check availability.");
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
@@ -106,9 +133,54 @@ export default function RoomDetails() {
             <span className="text-sm font-normal text-muted">/ night</span>
           </p>
 
-          <ButtonLink to="/login" className="mt-6 w-full">
-            Reserve this room
-          </ButtonLink>
+          <div className="mt-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-medium">
+                Check-in
+                <input
+                  type="date"
+                  value={checkIn}
+                  onChange={(event) => setCheckIn(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
+                />
+              </label>
+
+              <label className="text-sm font-medium">
+                Check-out
+                <input
+                  type="date"
+                  value={checkOut}
+                  onChange={(event) => setCheckOut(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
+                />
+              </label>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCheckAvailability}
+              disabled={isChecking || !checkIn || !checkOut}
+              className="mt-4 w-full rounded-xl bg-sage px-5 py-3 font-semibold text-white disabled:opacity-50"
+            >
+              {isChecking ? "Checking..." : "Check availability"}
+            </button>
+
+            {isAvailable === true && (
+              <p className="mt-3 text-sm text-sage">
+                This room is available for your selected dates.
+              </p>
+            )}
+
+            {isAvailable === false && (
+              <p className="mt-3 text-sm text-red-600">
+                This room is not available for your selected dates.
+              </p>
+            )}
+
+            {availabilityError && (
+              <p className="mt-3 text-sm text-red-600">{availabilityError}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

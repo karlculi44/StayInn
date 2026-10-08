@@ -145,6 +145,12 @@ export const getAvailableRooms = async (req: Request, res: Response) => {
           status: {
             not: "CANCELLED",
           },
+          checkIn: {
+            lt: new Date(checkOut),
+          },
+          checkOut: {
+            gt: new Date(checkIn),
+          },
         },
       },
     },
