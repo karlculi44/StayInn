@@ -12,7 +12,7 @@ import GuestDashboard from "../pages/guest/Dashboard";
 import GuestReservations from "../pages/guest/Reservations";
 import ReservationDetails from "../pages/guest/ReservationDetails";
 import Profile from "../pages/guest/Profile";
-import AdminDashboard from "../pages/admin/Dashboard";
+import AdminPage from "../pages/admin/Dashboard";
 import AdminRooms from "../pages/admin/Rooms";
 import RoomTypes from "../pages/admin/RoomTypes";
 import AdminReservations from "../pages/admin/Reservations";
@@ -38,7 +38,7 @@ export default function AppRoutes() {
       </Route>
       <Route element={<AdminGuard />}>
         <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/rooms" element={<AdminRooms />} />
           <Route path="/admin/room-types" element={<RoomTypes />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />

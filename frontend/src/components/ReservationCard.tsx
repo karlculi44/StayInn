@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Reservation } from "../types/reservation";
+import ReservationStatus from "./ui/ReservationStatus";
 
 type ReservationCardProps = {
   reservation: Reservation;
@@ -21,10 +22,7 @@ export default function ReservationCard({ reservation }: ReservationCardProps) {
   return (
     <article className="flex flex-col justify-between gap-4 rounded-2xl bg-white p-5 sm:flex-row sm:items-center">
       <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-gold">
-          {reservation.status}
-        </p>
-
+        <ReservationStatus status={reservation.status} />
         <h3 className="mt-2 font-display text-2xl">
           {reservation.room.roomType.name}
         </h3>

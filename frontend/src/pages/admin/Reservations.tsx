@@ -5,6 +5,7 @@ import {
   updateReservationStatus,
 } from "../../services/reservation.service";
 import type { AdminReservation } from "../../types/admin-reservation";
+import ReservationStatus from "../../components/ui/ReservationStatus";
 
 export default function Reservations() {
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
@@ -68,9 +69,7 @@ export default function Reservations() {
             <article key={reservation.id} className="rounded-2xl bg-white p-5">
               <div className="flex flex-col justify-between gap-4 sm:flex-row">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-gold">
-                    {reservation.status}
-                  </p>
+                  <ReservationStatus status={reservation.status} />
 
                   <h2 className="mt-2 font-display text-2xl">
                     {reservation.room.roomType.name}

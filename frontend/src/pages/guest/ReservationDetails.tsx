@@ -6,6 +6,7 @@ import {
   getReservation,
 } from "../../services/reservation.service";
 import type { Reservation } from "../../types/reservation";
+import ReservationStatus from "../../components/ui/ReservationStatus";
 
 export default function ReservationDetails() {
   const { id } = useParams();
@@ -90,9 +91,7 @@ export default function ReservationDetails() {
       <h1 className="mt-2 font-display text-4xl">Reservation details</h1>
 
       <div className="mt-8 rounded-2xl bg-white p-6">
-        <p className="text-xs font-bold uppercase tracking-widest text-gold">
-          {reservation.status}
-        </p>
+        <ReservationStatus status={reservation.status} />
 
         <h2 className="mt-2 font-display text-3xl">
           {reservation.room.roomType.name}
