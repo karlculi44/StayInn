@@ -50,6 +50,11 @@ export const getUserById = asyncHandler(async (req: Request, res: Response) => {
 export const updateUserRole = asyncHandler(
   async (req: Request, res: Response) => {
     const id = getStringParam(req.params.id, "user ID");
+
+    if (req.user?.userId === id) {
+      throw new AppError("You cannot change your own role", 403);
+    }
+
     const { role } = req.body;
 
     const user = await prisma.user.findUnique({
@@ -86,6 +91,10 @@ export const updateUserRole = asyncHandler(
 
 export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   const id = getStringParam(req.params.id, "user ID");
+
+  if (req.user?.userId === id) {
+    throw new AppError("You cannot delete your own account", 403);
+  }
 
   const user = await prisma.user.findUnique({
     where: {

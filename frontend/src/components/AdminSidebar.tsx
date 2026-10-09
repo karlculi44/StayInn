@@ -6,7 +6,7 @@ const items = [
   { label: "Rooms", to: "/admin/rooms" },
   { label: "Room types", to: "/admin/room-types" },
   { label: "Reservations", to: "/admin/reservations" },
-  { label: "Guests", to: "/admin/users" },
+  { label: "Users", to: "/admin/users" },
 ];
 export default function AdminSidebar() {
   const { logout } = useAuth();
