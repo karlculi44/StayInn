@@ -5,3 +5,32 @@ export const getRoomTypes = async () => {
 
   return response.data;
 };
+
+export const createRoomType = async (data: {
+  name: string;
+  description: string;
+  capacity: number;
+  pricePerNight: number;
+}) => {
+  const response = await api.post("/room-types", data);
+
+  return response.data;
+};
+
+export const updateRoomType = async (
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    capacity?: number;
+    pricePerNight?: number;
+  },
+) => {
+  const response = await api.patch(`/room-types/${id}`, data);
+
+  return response.data;
+};
+
+export const deleteRoomType = async (id: string) => {
+  await api.delete(`/room-types/${id}`);
+};
