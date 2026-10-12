@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
 import app from "../app.js";
 import { prisma } from "../lib/prisma.js";
+import { generateReservationReferenceId } from "../utils/reservationReference.js";
 
 describe("Reservation cancellation and status transitions", () => {
   let roomTypeId = "";
@@ -41,6 +42,7 @@ describe("Reservation cancellation and status transitions", () => {
 
     const reservation = await prisma.reservation.create({
       data: {
+        referenceId: generateReservationReferenceId(),
         checkIn,
         checkOut,
         guests: 2,

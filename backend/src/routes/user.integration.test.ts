@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import app from "../app.js";
+import { generateReservationReferenceId } from "../utils/reservationReference.js";
 
 const createdUserIds: string[] = [];
 
@@ -157,6 +158,7 @@ describe("User management integration tests", () => {
 
     await prisma.reservation.create({
       data: {
+        referenceId: generateReservationReferenceId(),
         checkIn: new Date(Date.now() + 24 * 60 * 60 * 1000),
         checkOut: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         guests: 1,

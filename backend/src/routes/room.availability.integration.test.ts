@@ -3,6 +3,7 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 import app from "../app.js";
 import { prisma } from "../lib/prisma.js";
+import { generateReservationReferenceId } from "../utils/reservationReference.js";
 
 function futureDate(daysFromToday: number): Date {
   const date = new Date();
@@ -82,6 +83,7 @@ describe("GET /api/rooms/availability", () => {
           checkOut: futureDate(13),
           guests: 2,
           totalAmount: 200,
+          referenceId: generateReservationReferenceId(),
           userId,
           roomId: testRooms.overlapping,
           status: "CONFIRMED",
@@ -91,6 +93,7 @@ describe("GET /api/rooms/availability", () => {
           checkOut,
           guests: 2,
           totalAmount: 200,
+          referenceId: generateReservationReferenceId(),
           userId,
           roomId: testRooms.cancelled,
           status: "CANCELLED",
@@ -100,6 +103,7 @@ describe("GET /api/rooms/availability", () => {
           checkOut: checkIn,
           guests: 2,
           totalAmount: 200,
+          referenceId: generateReservationReferenceId(),
           userId,
           roomId: testRooms.backToBack,
           status: "CONFIRMED",

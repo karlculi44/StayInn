@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { generateReservationReferenceId } from "../utils/reservationReference.js";
 
 describe("Reservation database concurrency protection", () => {
   let roomTypeId = "";
@@ -50,6 +51,7 @@ describe("Reservation database concurrency protection", () => {
 
     const first = await prisma.reservation.create({
       data: {
+        referenceId: generateReservationReferenceId(),
         checkIn,
         checkOut,
         guests: 2,
@@ -90,6 +92,7 @@ describe("Reservation database concurrency protection", () => {
     try {
       await prisma.reservation.create({
         data: {
+          referenceId: generateReservationReferenceId(),
           checkIn: new Date(first.checkIn.getTime() + 24 * 60 * 60 * 1000),
           checkOut: new Date(first.checkOut.getTime() + 24 * 60 * 60 * 1000),
           guests: 2,

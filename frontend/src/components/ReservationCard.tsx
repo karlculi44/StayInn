@@ -48,6 +48,12 @@ export default function ReservationCard({ reservation }: ReservationCardProps) {
           {reservation.room.roomType.name}
         </h3>
         <p className="mt-1 text-sm text-muted">
+          Reference ID:{" "}
+          <span className="font-semibold text-ink">
+            {reservation.referenceId}
+          </span>
+        </p>
+        <p className="mt-1 text-sm text-muted">
           Room {reservation.room.roomNumber} · {checkIn} – {checkOut} ·{" "}
           {reservation.guests} guests
         </p>

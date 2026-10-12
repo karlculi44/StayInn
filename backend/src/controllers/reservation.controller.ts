@@ -5,6 +5,7 @@ import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import type { ReservationStatus } from "@prisma/client";
 import type { AdminReservationQuery } from "../schemas/reservation.schema.js";
+import { createWithReservationReference } from "../utils/reservationReference.js";
 
 const validTransitions: Record<ReservationStatus, ReservationStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -74,16 +75,19 @@ export const createReservation = asyncHandler(
 
     const totalAmount = Number(room.roomType.pricePerNight) * nights;
 
-    const reservation = await prisma.reservation.create({
-      data: {
-        checkIn,
-        checkOut,
-        guests,
-        totalAmount,
-        roomId,
-        userId,
-      },
-    });
+    const reservation = await createWithReservationReference((referenceId) =>
+      prisma.reservation.create({
+        data: {
+          referenceId,
+          checkIn,
+          checkOut,
+          guests,
+          totalAmount,
+          roomId,
+          userId,
+        },
+      }),
+    );
 
     res.status(201).json(reservation);
   },

@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
 import app from "../app.js";
 import { prisma } from "../lib/prisma.js";
+import { generateReservationReferenceId } from "../utils/reservationReference.js";
 
 let testRoomTypeId = "";
 let testRoomId = "";
@@ -41,6 +42,7 @@ const createExistingReservation = async (
 ) => {
   return prisma.reservation.create({
     data: {
+      referenceId: generateReservationReferenceId(),
       userId,
       roomId: testRoomId,
       checkIn,
@@ -186,6 +188,14 @@ describe("Reservation booking integration tests", () => {
     expect(response.body.userId).toBe(user.id);
     expect(response.body.roomId).toBe(testRoomId);
     expect(Number(response.body.totalAmount)).toBe(200);
+    expect(response.body.referenceId).toMatch(
+      /^STY-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/,
+    );
+
+    const savedReservation = await prisma.reservation.findUniqueOrThrow({
+      where: { id: response.body.id },
+    });
+    expect(savedReservation.referenceId).toBe(response.body.referenceId);
   });
 
   it("allows only one of two simultaneous overlapping bookings", async () => {

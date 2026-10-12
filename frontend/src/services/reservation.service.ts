@@ -11,8 +11,8 @@ export const getReservations = async (): Promise<Reservation[]> => {
   }
 };
 
-export const getReservation = async (id: string) => {
-  const response = await api.get(`/reservations/${id}`);
+export const getReservation = async (id: string): Promise<Reservation> => {
+  const response = await api.get<Reservation>(`/reservations/${id}`);
 
   return response.data;
 };
