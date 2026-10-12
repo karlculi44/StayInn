@@ -4,7 +4,7 @@ import { useAuth } from "../context/useAuth";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
-  { label: "My stays", to: "/dashboard" },
+  { label: "Dashboard", to: "/dashboard" },
 ];
 export default function Navbar() {
   const { user, isLoading, logout } = useAuth();
