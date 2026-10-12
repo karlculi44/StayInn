@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.js";
 import hashToken from "../utils/hashToken.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { env } from "../config/runtime.js";
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { firstName, lastName, email, password } = req.body;
@@ -55,13 +56,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   const accessToken = jwt.sign(
     { userId: user.id, role: user.role },
-    process.env.JWT_ACCESS_TOKEN_SECRET as string,
+    env.JWT_ACCESS_TOKEN_SECRET,
     { expiresIn: "15m" },
   );
 
   const refreshToken = jwt.sign(
     { userId: user.id },
-    process.env.JWT_REFRESH_TOKEN_SECRET as string,
+    env.JWT_REFRESH_TOKEN_SECRET,
     { expiresIn: "7d" },
   );
 
@@ -77,15 +78,15 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -115,14 +116,14 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 
   res.clearCookie("accessToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 0,
   });
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 0,
   });
   res.status(200).json({ message: "Logout successful" });
@@ -232,7 +233,7 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
   try {
     const decoded = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_TOKEN_SECRET as string,
+      env.JWT_REFRESH_TOKEN_SECRET,
     ) as {
       userId: string;
     };
@@ -268,7 +269,7 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
         userId: user.id,
         role: user.role,
       },
-      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      env.JWT_ACCESS_TOKEN_SECRET,
       {
         expiresIn: "15m",
       },
@@ -278,7 +279,7 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
       {
         userId: user.id,
       },
-      process.env.JWT_REFRESH_TOKEN_SECRET as string,
+      env.JWT_REFRESH_TOKEN_SECRET,
       {
         expiresIn: "7d",
       },
@@ -305,14 +306,14 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
 
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });

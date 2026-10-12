@@ -2,6 +2,9 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { assertDevelopmentSeedEnvironment } from "./seedGuard.js";
+
+assertDevelopmentSeedEnvironment(process.env.NODE_ENV);
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,

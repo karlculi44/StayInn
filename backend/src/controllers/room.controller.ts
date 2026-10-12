@@ -156,7 +156,6 @@ export const getAvailableRooms = async (req: Request, res: Response) => {
     },
     include: {
       roomType: true,
-      reservations: true,
     },
   });
 

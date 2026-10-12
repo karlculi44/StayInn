@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv";
+import { env } from "./config/runtime.js";
 import roomRoutes from "./routes/room.routes.js";
 import roomTypeRoutes from "./routes/roomType.routes.js";
 import reservationRoutes from "./routes/reservation.routes.js";
@@ -11,8 +11,6 @@ import adminRoutes from "./routes/admin.routes.js";
 import helmet from "helmet";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
-dotenv.config();
-
 const app = express();
 
 app.set("trust proxy", 1);
@@ -20,7 +18,7 @@ app.set("trust proxy", 1);
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: env.FRONTEND_URL,
     credentials: true,
   }),
 );

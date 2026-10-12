@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { Role } from "@prisma/client";
 import { AppError } from "../utils/AppError.js";
+import { env } from "../config/runtime.js";
 
 export const verifyToken = (
   req: Request,
@@ -17,7 +18,7 @@ export const verifyToken = (
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      env.JWT_ACCESS_TOKEN_SECRET,
     ) as { userId: string; role: "ADMIN" | "GUEST" };
 
     req.user = decoded;

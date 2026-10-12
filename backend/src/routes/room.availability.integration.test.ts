@@ -156,6 +156,29 @@ describe("GET /api/rooms/availability", () => {
     expect(returnedRoomIds).not.toContain(testRooms.inactive);
   });
 
+  it("does not expose reservation data in public availability results", async () => {
+    const response = await request(app).get("/api/rooms/availability").query({
+      checkIn: checkIn.toISOString(),
+      checkOut: checkOut.toISOString(),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: testRooms.available,
+          roomType: expect.objectContaining({ id: roomTypeId }),
+        }),
+      ]),
+    );
+
+    for (const room of response.body) {
+      expect(room).not.toHaveProperty("reservations");
+    }
+
+    expect(JSON.stringify(response.body)).not.toContain(userId);
+  });
+
   it("rejects a request with missing dates", async () => {
     const response = await request(app)
       .get("/api/rooms/availability")
