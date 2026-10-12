@@ -43,3 +43,7 @@ export const adminReservationQuerySchema = z
   );
 
 export type AdminReservationQuery = z.infer<typeof adminReservationQuerySchema>;
+
+export const updateReservationStatusSchema = z.object({
+  status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "COMPLETED"]),
+});
