@@ -12,6 +12,19 @@ export type Room = {
   features: string[];
 };
 
+export type RoomListing = {
+  id: string;
+  roomNumber: string;
+  status: "AVAILABLE" | "MAINTENANCE" | "INACTIVE";
+  roomType: {
+    id: string;
+    name: string;
+    description: string;
+    capacity: number;
+    pricePerNight: string;
+  };
+};
+
 export type NavItem = {
   label: string;
   to: string;

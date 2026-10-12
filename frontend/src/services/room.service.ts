@@ -1,7 +1,8 @@
 import { api } from "./api";
+import type { RoomListing } from "../types";
 
 export const getRooms = async () => {
-  const response = await api.get("/rooms");
+  const response = await api.get<RoomListing[]>("/rooms");
 
   return response.data;
 };
