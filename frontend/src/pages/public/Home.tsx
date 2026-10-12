@@ -1,9 +1,49 @@
+import { useEffect, useState } from "react";
 import { ButtonLink } from "../../components/ui/Button";
+import { Button } from "../../components/ui/Button";
 import RoomCard from "../../components/RoomCard";
+import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
+import { getRooms } from "../../services/room.service";
+import type { RoomListing } from "../../types";
 import SectionTitle from "../SectionTitle";
 import { rooms } from "../shared";
 
 export default function Home() {
+  const [featuredRooms, setFeaturedRooms] = useState<RoomListing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchRooms = async () => {
+      setIsLoading(true);
+      setHasError(false);
+
+      try {
+        const data = await getRooms();
+        if (isMounted) {
+          setFeaturedRooms(data.slice(0, 3));
+        }
+      } catch {
+        if (isMounted) {
+          setHasError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void fetchRooms();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [retryCount]);
+
   return (
     <>
       <section className="relative isolate overflow-hidden bg-sage-dark">
@@ -43,11 +83,40 @@ export default function Home() {
             View all rooms →
           </ButtonLink>
         </SectionTitle>
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {rooms.map((room) => (
-            <RoomCard key={room.id} room={room} />
-          ))}
-        </div>
+        {isLoading && (
+          <div className="mt-10">
+            <Loading label="Loading rooms..." />
+          </div>
+        )}
+        {!isLoading && hasError && (
+          <div className="mt-10 space-y-4">
+            <ErrorState message="We couldn't load rooms right now. Please try again." />
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setRetryCount((count) => count + 1)}
+              >
+                Try again
+              </Button>
+            </div>
+          </div>
+        )}
+        {!isLoading && !hasError && featuredRooms.length === 0 && (
+          <div className="mt-10">
+            <EmptyState
+              title="No rooms to display"
+              message="Please check back later for room listings."
+            />
+          </div>
+        )}
+        {!isLoading && !hasError && featuredRooms.length > 0 && (
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            {featuredRooms.map((room) => (
+              <RoomCard key={room.id} room={room} />
+            ))}
+          </div>
+        )}
       </section>
       <section className="mx-auto max-w-7xl px-5 pb-8 lg:px-8">
         <div className="grid gap-8 rounded-3xl bg-[#e6ede8] p-8 sm:p-12 md:grid-cols-3">
