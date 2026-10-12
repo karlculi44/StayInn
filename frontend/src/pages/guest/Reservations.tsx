@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { EmptyState, ErrorState } from "../../components/ui/States";
+import { Link } from "react-router-dom";
+import { Button } from "../../components/ui/Button";
+import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import ReservationCard from "../../components/ReservationCard";
 import { getReservations } from "../../services/reservation.service";
 import type { Reservation } from "../../types/reservation";
@@ -8,21 +10,40 @@ export default function Reservations() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchReservations = async () => {
       try {
         const data = await getReservations();
-        setReservations(data);
+        if (isMounted) {
+          setReservations(data);
+        }
       } catch {
-        setError("Unable to load your reservations.");
+        if (isMounted) {
+          setError("Unable to load your reservations. Please try again.");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchReservations();
-  }, []);
+    void fetchReservations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [retryCount]);
+
+  const handleRetry = () => {
+    setError("");
+    setIsLoading(true);
+    setRetryCount((count) => count + 1);
+  };
 
   return (
     <div>
@@ -33,19 +54,38 @@ export default function Reservations() {
       <h1 className="mt-2 font-display text-4xl">Reservations</h1>
 
       <div className="mt-8 space-y-4">
-        {isLoading && <p>Loading reservations...</p>}
-
-        {error && <ErrorState message={error} />}
+        {isLoading && <Loading label="Loading reservations..." />}
 
         {!isLoading && !error && reservations.length === 0 && (
-          <EmptyState
-            title="Nothing here yet"
-            message="Your StayInn details will appear here once you make a reservation."
-          />
+          <>
+            <EmptyState
+              title="No reservations yet"
+              message="Your reservations will appear here after you book a stay."
+            />
+            <div className="text-center">
+              <Link
+                to="/rooms"
+                className="text-sm font-semibold text-sage hover:text-sage-dark"
+              >
+                Browse rooms →
+              </Link>
+            </div>
+          </>
         )}
 
         {!isLoading &&
-          !error &&
+          error && (
+            <div className="space-y-4">
+              <ErrorState message={error} />
+              <div className="text-center">
+                <Button type="button" variant="secondary" onClick={handleRetry}>
+                  Try again
+                </Button>
+              </div>
+            </div>
+          )}
+
+        {!isLoading && !error &&
           reservations.map((reservation) => (
             <ReservationCard key={reservation.id} reservation={reservation} />
           ))}

@@ -1,6 +1,7 @@
 import { api } from "./api";
+import type { Reservation } from "../types/reservation";
 
-export const getReservations = async () => {
+export const getReservations = async (): Promise<Reservation[]> => {
   try {
     const response = await api.get("/reservations");
     return response.data;
