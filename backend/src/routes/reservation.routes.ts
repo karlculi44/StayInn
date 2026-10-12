@@ -3,6 +3,7 @@ import { validate } from "../middleware/validate.middleware.js";
 import {
   createReservationSchema,
   adminReservationQuerySchema,
+  updateReservationStatusSchema,
 } from "../schemas/reservation.schema.js";
 import {
   createReservation,
@@ -30,6 +31,7 @@ router.patch(
   "/:id/status",
   verifyToken,
   authorize("ADMIN"),
+  validate(updateReservationStatusSchema),
   updateReservationStatus,
 );
 
