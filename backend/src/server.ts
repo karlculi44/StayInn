@@ -1,17 +1,11 @@
 import "dotenv/config";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseEnv } from "./config/env.js";
+import { env } from "./config/runtime.js";
+import app from "./app.js";
+import { cleanupRefreshTokens } from "./utils/cleanupRefreshTokens.js";
 
-export async function startServer(
-  input: Record<string, string | undefined> = process.env,
-): Promise<void> {
-  const env = parseEnv(input);
-  const [{ default: app }, { cleanupRefreshTokens }] = await Promise.all([
-    import("./app.js"),
-    import("./utils/cleanupRefreshTokens.js"),
-  ]);
-
+export function startServer(): void {
   app.listen(env.PORT, () => {
     console.log(`StayInn server running on port ${env.PORT}`);
 

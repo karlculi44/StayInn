@@ -214,9 +214,15 @@ export const changePassword = asyncHandler(
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+
+      await tx.refreshToken.deleteMany({
+        where: { userId },
+      });
     });
 
     res.status(200).json({ message: "Password changed successfully" });

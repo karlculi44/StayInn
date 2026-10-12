@@ -1,17 +1,9 @@
 import "dotenv/config";
+import { validateTestDatabaseUrl } from "./testDatabaseUrl.js";
 
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+process.env.NODE_ENV = "test";
+process.env.JWT_ACCESS_TOKEN_SECRET = "stayinn-test-access-secret";
+process.env.JWT_REFRESH_TOKEN_SECRET = "stayinn-test-refresh-secret";
 
-if (!testDatabaseUrl) {
-  throw new Error("TEST_DATABASE_URL must be configured before running tests.");
-}
-
-const databaseName = new URL(testDatabaseUrl).pathname.slice(1);
-
-if (databaseName !== "stayinn_test") {
-  throw new Error(
-    `Tests must use stayinn_test, but the configured database is "${databaseName}".`,
-  );
-}
-
+const testDatabaseUrl = validateTestDatabaseUrl(process.env.TEST_DATABASE_URL);
 process.env.DATABASE_URL = testDatabaseUrl;
