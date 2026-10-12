@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { randomUUID } from "node:crypto";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
@@ -64,7 +65,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   );
 
   const refreshToken = jwt.sign(
-    { userId: user.id },
+    { userId: user.id, jti: randomUUID() },
     env.JWT_REFRESH_TOKEN_SECRET,
     { expiresIn: "7d" },
   );
@@ -248,6 +249,10 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
     });
 
     if (!storedRefreshToken) {
+      console.warn("Refresh token record missing", {
+        event: "refresh_token_record_missing",
+        userId: decoded.userId,
+      });
       throw new AppError("Refresh token not found", 401);
     }
 
@@ -279,6 +284,7 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
     const newRefreshToken = jwt.sign(
       {
         userId: user.id,
+        jti: randomUUID(),
       },
       env.JWT_REFRESH_TOKEN_SECRET,
       {
