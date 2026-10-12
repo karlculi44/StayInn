@@ -80,4 +80,6 @@ Provide backend settings through the deployment environment or a secrets manager
 
 Set `VITE_API_URL` to the deployed backend API base URL before building the frontend. Use the public HTTPS API URL; production frontend builds reject localhost, loopback, private, and local-only hosts. Do not place backend secrets in any `VITE_` variable.
 
+The browser frontend and backend may be hosted on different sites. Production auth cookies therefore use `HttpOnly`, `Secure`, `SameSite=None`, and `Path=/`; the server also requires the configured `FRONTEND_URL` as the exact `Origin` on state-changing requests. Missing origins are allowed only in development and automated tests; malformed, `null`, and untrusted origins on state-changing requests are rejected in every environment. Safe `GET`/`HEAD` requests and CORS preflight requests are not blocked by the Origin middleware. CORS remains restricted to the configured frontend origin. Browser third-party-cookie restrictions may still prevent cross-site cookie authentication in some environments.
+
 The backend package declares `npm run build` and `npm start`, but its TypeScript configuration does not specify an output directory while the start script expects `dist/server.js`. Verify that build/start output alignment before relying on those scripts for production.

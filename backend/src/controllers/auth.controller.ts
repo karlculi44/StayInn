@@ -6,6 +6,9 @@ import hashToken from "../utils/hashToken.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { env } from "../config/runtime.js";
+import { getAuthCookieOptions } from "../config/authCookieOptions.js";
+
+const authCookieOptions = getAuthCookieOptions(env.NODE_ENV);
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { firstName, lastName, email, password } = req.body;
@@ -77,16 +80,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    ...authCookieOptions,
     maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
   res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    ...authCookieOptions,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -115,15 +114,11 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   }
 
   res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    ...authCookieOptions,
     maxAge: 0,
   });
   res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    ...authCookieOptions,
     maxAge: 0,
   });
   res.status(200).json({ message: "Logout successful" });
@@ -311,16 +306,12 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
     });
 
     res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax",
+      ...authCookieOptions,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax",
+      ...authCookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 

@@ -10,6 +10,7 @@ import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import helmet from "helmet";
 import { errorMiddleware } from "./middleware/error.middleware.js";
+import { verifyRequestOrigin } from "./middleware/origin.middleware.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use(verifyRequestOrigin);
 
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());

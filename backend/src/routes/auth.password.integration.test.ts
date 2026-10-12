@@ -55,6 +55,7 @@ async function changePassword(
 ) {
   return request(app)
     .patch("/api/auth/me/password")
+    .set("Origin", env.FRONTEND_URL)
     .set("Cookie", `accessToken=${accessToken}`)
     .send({ currentPassword, newPassword });
 }
