@@ -9,6 +9,7 @@ const createdUserIds: string[] = [];
 
 let testRoomTypeId = "";
 let testRoomId = "";
+let testAdminId = "";
 let accessToken = "";
 
 const createTestUser = async () => {
@@ -35,10 +36,20 @@ describe("User management integration tests", () => {
       throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
     }
 
-    // This ID represents the authenticated admin making the requests.
+    const admin = await prisma.user.create({
+      data: {
+        firstName: "Integration",
+        lastName: "Admin",
+        email: `integration-admin-${randomUUID()}@example.com`,
+        password: "test-password-hash",
+        role: "ADMIN",
+      },
+    });
+    testAdminId = admin.id;
+
     accessToken = jwt.sign(
       {
-        userId: "integration-test-admin",
+        userId: admin.id,
         role: "ADMIN",
       },
       secret,
@@ -95,6 +106,12 @@ describe("User management integration tests", () => {
     if (testRoomTypeId) {
       await prisma.roomType.delete({
         where: { id: testRoomTypeId },
+      });
+    }
+
+    if (testAdminId) {
+      await prisma.user.delete({
+        where: { id: testAdminId },
       });
     }
 

@@ -1,17 +1,30 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 import jwt from "jsonwebtoken";
 import app from "../app.js";
+import { prisma } from "../lib/prisma.js";
 
-const testUserId = "test-admin-id";
+let testUserId = "";
 let accessToken: string;
 
-beforeAll(() => {
+beforeAll(async () => {
   const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
 
   if (!secret) {
     throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
   }
+
+  const admin = await prisma.user.create({
+    data: {
+      firstName: "Security",
+      lastName: "Admin",
+      email: `security-admin-${randomUUID()}@example.com`,
+      password: "test-password-hash",
+      role: "ADMIN",
+    },
+  });
+  testUserId = admin.id;
 
   accessToken = jwt.sign(
     {
@@ -21,6 +34,13 @@ beforeAll(() => {
     secret,
     { expiresIn: "5m" },
   );
+});
+
+afterAll(async () => {
+  if (testUserId) {
+    await prisma.user.deleteMany({ where: { id: testUserId } });
+  }
+  await prisma.$disconnect();
 });
 
 describe("Admin self-protection", () => {

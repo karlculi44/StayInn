@@ -7,6 +7,7 @@ import { prisma } from "../lib/prisma.js";
 
 let testRoomTypeId = "";
 let testRoomId = "";
+let adminId = "";
 let accessToken = "";
 const createdUserIds: string[] = [];
 
@@ -86,9 +87,20 @@ describe("Reservation booking integration tests", () => {
       throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
     }
 
+    const admin = await prisma.user.create({
+      data: {
+        firstName: "Reservation",
+        lastName: "Admin",
+        email: `reservation-admin-${randomUUID()}@example.com`,
+        password: "test-password-hash",
+        role: "ADMIN",
+      },
+    });
+    adminId = admin.id;
+
     accessToken = jwt.sign(
       {
-        userId: "reservation-test-admin",
+        userId: admin.id,
         role: "ADMIN",
       },
       secret,
@@ -151,6 +163,12 @@ describe("Reservation booking integration tests", () => {
     if (testRoomTypeId) {
       await prisma.roomType.delete({
         where: { id: testRoomTypeId },
+      });
+    }
+
+    if (adminId) {
+      await prisma.user.delete({
+        where: { id: adminId },
       });
     }
 
