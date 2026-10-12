@@ -36,6 +36,20 @@ describe("validateApiUrl", () => {
     );
   });
 
+  it("rejects public HTTP API URLs in production", () => {
+    assert.throws(
+      () => validateApiUrl("http://api.example.com/api", true),
+      /must use HTTPS in production/,
+    );
+  });
+
+  it("rejects malformed API URLs in production", () => {
+    assert.throws(
+      () => validateApiUrl("not-a-url", true),
+      /valid HTTP or HTTPS URL/,
+    );
+  });
+
   it("rejects local and private hosts in production", () => {
     for (const value of [
       "http://localhost:5000/api",

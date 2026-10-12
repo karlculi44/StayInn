@@ -65,8 +65,93 @@ describe("parseEnv", () => {
         ...validEnvironment,
         NODE_ENV: "production",
         FRONTEND_URL: undefined,
+        JWT_ACCESS_TOKEN_SECRET: "a".repeat(32),
+        JWT_REFRESH_TOKEN_SECRET: "b".repeat(32),
       }),
     ).toThrow("FRONTEND_URL");
+  });
+
+  it("rejects missing JWT secrets in production", () => {
+    for (const variable of [
+      "JWT_ACCESS_TOKEN_SECRET",
+      "JWT_REFRESH_TOKEN_SECRET",
+    ] as const) {
+      expect(() =>
+        parseEnv({
+          ...validEnvironment,
+          NODE_ENV: "production",
+          JWT_ACCESS_TOKEN_SECRET: "a".repeat(32),
+          JWT_REFRESH_TOKEN_SECRET: "b".repeat(32),
+          [variable]: undefined,
+        }),
+      ).toThrow(variable);
+    }
+  });
+
+  it.each([
+    "replace-with-a-random-local-only-access-secret",
+    "replace-with-a-different-local-only-refresh-secret",
+    "stayinn-test-access-secret",
+    "stayinn-test-refresh-secret",
+    "placeholder-secret-value-that-is-long-enough",
+  ])("rejects a production JWT placeholder", (secret) => {
+    expect(() =>
+      parseEnv({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        JWT_ACCESS_TOKEN_SECRET: secret,
+        JWT_REFRESH_TOKEN_SECRET: "b".repeat(32),
+      }),
+    ).toThrow("JWT_ACCESS_TOKEN_SECRET");
+  });
+
+  it.each([
+    ["JWT_ACCESS_TOKEN_SECRET", "JWT_REFRESH_TOKEN_SECRET"],
+    ["JWT_REFRESH_TOKEN_SECRET", "JWT_ACCESS_TOKEN_SECRET"],
+  ] as const)("rejects a short production %s", (variable, otherVariable) => {
+    const errorMessage = (() => {
+      try {
+        parseEnv({
+          ...validEnvironment,
+          NODE_ENV: "production",
+          JWT_ACCESS_TOKEN_SECRET: "a".repeat(32),
+          JWT_REFRESH_TOKEN_SECRET: "b".repeat(32),
+          [variable]: "x".repeat(31),
+        });
+      } catch (error) {
+        return error instanceof Error ? error.message : "";
+      }
+
+      return "";
+    })();
+
+    expect(errorMessage).toContain(variable);
+    expect(errorMessage).not.toContain("x".repeat(31));
+    expect(errorMessage).not.toContain(otherVariable);
+  });
+
+  it("rejects identical production JWT secrets", () => {
+    const secret = "a".repeat(32);
+
+    expect(() =>
+      parseEnv({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        JWT_ACCESS_TOKEN_SECRET: secret,
+        JWT_REFRESH_TOKEN_SECRET: secret,
+      }),
+    ).toThrow("JWT_ACCESS_TOKEN_SECRET");
+  });
+
+  it("accepts sufficiently long distinct production JWT secrets", () => {
+    const environment = parseEnv({
+      ...validEnvironment,
+      NODE_ENV: "production",
+      JWT_ACCESS_TOKEN_SECRET: "a".repeat(32),
+      JWT_REFRESH_TOKEN_SECRET: "b".repeat(32),
+    });
+
+    expect(environment.NODE_ENV).toBe("production");
   });
 
   it("rejects an unsupported NODE_ENV", () => {

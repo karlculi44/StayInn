@@ -11,6 +11,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import helmet from "helmet";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { verifyRequestOrigin } from "./middleware/origin.middleware.js";
+import { prisma } from "./lib/prisma.js";
 
 const app = express();
 
@@ -28,11 +29,18 @@ app.use(verifyRequestOrigin);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
-// Health check endpoint
 app.get("/api/health", (_req, res) => {
-  res.json({
-    message: "StayInn API is running",
-  });
+  res.json({ status: "ok" });
+});
+
+app.get("/api/health/ready", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ready" });
+  } catch {
+    console.error("Database readiness check failed");
+    res.status(503).json({ status: "unavailable" });
+  }
 });
 
 app.use("/api/rooms", roomRoutes);

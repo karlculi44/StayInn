@@ -40,27 +40,76 @@ const portSchema = z
   .optional()
   .transform((value) => value ?? 5000);
 
+const minimumProductionJwtSecretLength = 32;
+const knownJwtSecretPlaceholders = new Set([
+  "replace-with-a-random-local-only-access-secret",
+  "replace-with-a-different-local-only-refresh-secret",
+  "stayinn-test-access-secret",
+  "stayinn-test-refresh-secret",
+  "change-me",
+  "changeme",
+  "your-secret",
+  "placeholder",
+]);
+
 const environmentSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]),
     DATABASE_URL: databaseUrlSchema,
-    JWT_ACCESS_TOKEN_SECRET: z
-      .string()
-      .refine((value) => value.trim().length > 0),
-    JWT_REFRESH_TOKEN_SECRET: z
-      .string()
-      .refine((value) => value.trim().length > 0),
+    JWT_ACCESS_TOKEN_SECRET: z.string().min(1),
+    JWT_REFRESH_TOKEN_SECRET: z.string().min(1),
     FRONTEND_URL: frontendOriginSchema.optional(),
     PORT: portSchema,
   })
   .superRefine((environment, context) => {
-    if (
-      environment.NODE_ENV === "production" &&
-      environment.FRONTEND_URL === undefined
-    ) {
+    if (environment.NODE_ENV !== "production") {
+      return;
+    }
+
+    if (environment.FRONTEND_URL === undefined) {
       context.addIssue({
         code: "custom",
         path: ["FRONTEND_URL"],
+      });
+    }
+
+    for (const variable of [
+      "JWT_ACCESS_TOKEN_SECRET",
+      "JWT_REFRESH_TOKEN_SECRET",
+    ] as const) {
+      const secret = environment[variable];
+
+      if (
+        knownJwtSecretPlaceholders.has(secret.trim().toLowerCase()) ||
+        /^(replace|change|your|example|placeholder|sample|dummy|test|development)([-_: ]|$)/i.test(
+          secret.trim(),
+        )
+      ) {
+        context.addIssue({
+          code: "custom",
+          path: [variable],
+        });
+      }
+
+      if (secret.length < minimumProductionJwtSecretLength) {
+        context.addIssue({
+          code: "custom",
+          path: [variable],
+        });
+      }
+    }
+
+    if (
+      environment.JWT_ACCESS_TOKEN_SECRET ===
+      environment.JWT_REFRESH_TOKEN_SECRET
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["JWT_ACCESS_TOKEN_SECRET"],
+      });
+      context.addIssue({
+        code: "custom",
+        path: ["JWT_REFRESH_TOKEN_SECRET"],
       });
     }
   })

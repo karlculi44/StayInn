@@ -78,4 +78,19 @@ describe("server configuration bootstrap", () => {
     expect(cleanupLoaded).not.toHaveBeenCalled();
     expect(listen).not.toHaveBeenCalled();
   });
+
+  it("rejects invalid production JWT secrets before listening", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.FRONTEND_URL = "https://stayinn.example";
+    process.env.JWT_ACCESS_TOKEN_SECRET = "short";
+    process.env.JWT_REFRESH_TOKEN_SECRET = "another-short-secret";
+
+    await expect(import("../server.js")).rejects.toThrow(
+      "JWT_ACCESS_TOKEN_SECRET",
+    );
+
+    expect(appLoaded).not.toHaveBeenCalled();
+    expect(cleanupLoaded).not.toHaveBeenCalled();
+    expect(listen).not.toHaveBeenCalled();
+  });
 });

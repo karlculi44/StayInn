@@ -110,5 +110,9 @@ export function validateApiUrl(
     );
   }
 
+  if (production && url.protocol !== "https:") {
+    throw new Error("VITE_API_URL must use HTTPS in production.");
+  }
+
   return value;
 }
