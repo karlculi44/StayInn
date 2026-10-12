@@ -22,6 +22,7 @@ export type RoomListing = {
     description: string;
     capacity: number;
     pricePerNight: string;
+    image: string | null;
   };
 };
 

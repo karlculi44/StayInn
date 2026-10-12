@@ -15,6 +15,7 @@ type Room = {
     description: string;
     capacity: number;
     pricePerNight: string;
+    image: string | null;
   };
 };
 
@@ -27,6 +28,10 @@ export default function RoomDetails() {
   const [availabilityError, setAvailabilityError] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fallbackImageRoomId, setFallbackImageRoomId] = useState<string | null>(
+    null,
+  );
+  const [imageErrorRoomId, setImageErrorRoomId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [guests, setGuests] = useState(1);
   const [isBooking, setIsBooking] = useState(false);
@@ -144,6 +149,11 @@ export default function RoomDetails() {
 
   const nights = getNights();
   const total = nights * Number(room.roomType.pricePerNight);
+  const roomImage = room.roomType.image?.trim();
+  const isUsingFallbackImage = fallbackImageRoomId === room.id;
+  const hasImageError = imageErrorRoomId === room.id;
+  const imageSource =
+    roomImage && !isUsingFallbackImage ? roomImage : staticRoom.image;
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
@@ -153,11 +163,28 @@ export default function RoomDetails() {
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
-          <img
-            src={staticRoom.image}
-            alt={room.roomType.name}
-            className="aspect-4/3 w-full rounded-3xl object-cover"
-          />
+          {hasImageError ? (
+            <div
+              role="img"
+              aria-label={`${room.roomType.name} image unavailable`}
+              className="flex aspect-4/3 w-full items-center justify-center rounded-3xl bg-cream text-muted"
+            >
+              Room image unavailable
+            </div>
+          ) : (
+            <img
+              src={imageSource}
+              alt={room.roomType.name}
+              className="aspect-4/3 w-full rounded-3xl object-cover"
+              onError={() => {
+                if (roomImage && !isUsingFallbackImage) {
+                  setFallbackImageRoomId(room.id);
+                } else {
+                  setImageErrorRoomId(room.id);
+                }
+              }}
+            />
+          )}
         </div>
 
         <div className="py-2">

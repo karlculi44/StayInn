@@ -103,7 +103,10 @@ export default function Rooms() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.map((room) => {
             const status = roomStatuses[room.status];
-            const image = roomImages[room.roomType.name] ?? defaultRoomImage;
+            const image =
+              room.roomType.image ??
+              roomImages[room.roomType.name] ??
+              defaultRoomImage;
 
             return (
               <article

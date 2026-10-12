@@ -19,12 +19,17 @@ async function main() {
     where: {
       name: "Standard Room",
     },
-    update: {},
     create: {
       name: "Standard Room",
       description: "A comfortable room suitable for short stays.",
       capacity: 2,
       pricePerNight: 1800,
+      image:
+        "https://images.unsplash.com/photo-1560185008-b033106af5c3?auto=format&fit=crop&w=1200&q=80",
+    },
+    update: {
+      image:
+        "https://images.unsplash.com/photo-1560185008-b033106af5c3?auto=format&fit=crop&w=1200&q=80",
     },
   });
 
@@ -32,12 +37,17 @@ async function main() {
     where: {
       name: "Deluxe Room",
     },
-    update: {},
     create: {
       name: "Deluxe Room",
       description: "A spacious room with additional comfort and amenities.",
       capacity: 3,
       pricePerNight: 2800,
+      image:
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
+    },
+    update: {
+      image:
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
     },
   });
 
@@ -45,12 +55,27 @@ async function main() {
     where: {
       name: "Family Room",
     },
-    update: {},
     create: {
       name: "Family Room",
       description: "A larger room designed for families and groups.",
       capacity: 5,
       pricePerNight: 4000,
+      image:
+        "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80",
+    },
+    update: {
+      image:
+        "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80",
+    },
+  });
+
+  const premiumRoomImageUpdate = await prisma.roomType.updateMany({
+    where: {
+      name: "Premium Room",
+    },
+    data: {
+      image:
+        "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1200&q=80",
     },
   });
 
@@ -58,6 +83,7 @@ async function main() {
     standardRoom,
     deluxeRoom,
     familyRoom,
+    premiumRoomImagesUpdated: premiumRoomImageUpdate.count,
   });
 
   await prisma.room.createMany({

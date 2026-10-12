@@ -7,8 +7,8 @@ export const getRooms = async () => {
   return response.data;
 };
 
-export const getRoom = async (id: string) => {
-  const response = await api.get(`/rooms/${id}`);
+export const getRoom = async (id: string): Promise<RoomListing> => {
+  const response = await api.get<RoomListing>(`/rooms/${id}`);
 
   return response.data;
 };
