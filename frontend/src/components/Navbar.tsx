@@ -1,4 +1,4 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { ButtonLink } from "./ui/Button";
 import { useAuth } from "../context/useAuth";
 const links = [
@@ -7,13 +7,7 @@ const links = [
   { label: "Dashboard", to: "/dashboard" },
 ];
 export default function Navbar() {
-  const { user, isLoading, logout } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleLogout() {
-    await logout();
-    navigate("/");
-  }
+  const { user, isLoading } = useAuth();
 
   return (
     <header className="border-b border-black/5 bg-cream/95">
@@ -37,27 +31,44 @@ export default function Navbar() {
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex min-h-9 min-w-34 items-center justify-end gap-3 sm:min-w-52">
           {!isLoading &&
             (user ? (
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
-              >
-                Logout
-              </button>
-            ) : (
               <NavLink
-                to="/login"
-                className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
+                to="/profile"
+                aria-label="View profile"
+                title="View profile"
+                className="inline-flex size-9 items-center justify-center rounded-full text-ink hover:text-sage focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
               >
-                Sign in
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="size-5"
+                >
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5.5 20a6.5 6.5 0 0 1 13 0"
+                  />
+                </svg>
               </NavLink>
+            ) : (
+              <>
+                <NavLink
+                  to="/login"
+                  className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
+                >
+                  Sign in
+                </NavLink>
+                <ButtonLink to="/register" className="px-4 py-2">
+                  Get started
+                </ButtonLink>
+              </>
             ))}
-          <ButtonLink to="/register" className="px-4 py-2">
-            Get started
-          </ButtonLink>
         </div>
       </div>
     </header>
