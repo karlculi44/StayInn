@@ -1,4 +1,8 @@
 import { api } from "./api";
+import type {
+  AdminReservation,
+  ReservationStatus,
+} from "../types/admin-reservation";
 import type { Reservation } from "../types/reservation";
 
 export const getReservations = async (): Promise<Reservation[]> => {
@@ -41,15 +45,21 @@ export const createReservation = async (
 
 // Admin-specific reservation services
 
-export const getAdminReservations = async () => {
-  const response = await api.get("/reservations/admin");
+export const getAdminReservations = async (): Promise<AdminReservation[]> => {
+  const response = await api.get<AdminReservation[]>("/reservations/admin");
   return response.data;
 };
 
-export const updateReservationStatus = async (id: string, status: string) => {
-  const response = await api.patch(`/reservations/${id}/status`, {
+export const updateReservationStatus = async (
+  id: string,
+  status: ReservationStatus,
+) => {
+  const response = await api.patch<{ status: ReservationStatus }>(
+    `/reservations/${id}/status`,
+    {
     status,
-  });
+    },
+  );
 
   return response.data;
 };

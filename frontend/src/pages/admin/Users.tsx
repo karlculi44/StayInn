@@ -183,6 +183,10 @@ export default function Users() {
                   )}
                 </td>
 
+                <td className="px-6 py-4 text-gray-600">
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </td>
+
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <button
@@ -222,10 +226,6 @@ export default function Users() {
                       {deletingUserId === user.id ? "Deleting..." : "Delete"}
                     </button>
                   </div>
-                </td>
-
-                <td className="px-6 py-4 text-gray-600">
-                  {new Date(user.createdAt).toLocaleDateString()}
                 </td>
               </tr>
             ))}
