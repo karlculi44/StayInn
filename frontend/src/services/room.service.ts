@@ -7,6 +7,12 @@ export const getRooms = async () => {
   return response.data;
 };
 
+export const getAllRoomsForAdmin = async () => {
+  const response = await api.get<RoomListing[]>("/rooms/admin");
+
+  return response.data;
+};
+
 export const getRoom = async (id: string): Promise<RoomListing> => {
   const response = await api.get<RoomListing>(`/rooms/${id}`);
 
@@ -42,6 +48,19 @@ export const updateRoom = async (
   },
 ) => {
   const response = await api.patch(`/rooms/${id}`, data);
+
+  return response.data;
+};
+
+export const updateRoomStatus = async (
+  id: string,
+  status: "AVAILABLE" | "MAINTENANCE" | "INACTIVE",
+  reason?: string,
+) => {
+  const response = await api.patch(`/rooms/${id}/status`, {
+    status,
+    ...(reason ? { reason } : {}),
+  });
 
   return response.data;
 };

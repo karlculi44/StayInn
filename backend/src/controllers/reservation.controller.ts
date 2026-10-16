@@ -21,71 +21,83 @@ export const createReservation = asyncHandler(
     }
 
     const userId = req.user.userId;
-
     const { checkIn, checkOut, guests, roomId } = req.body;
 
-    const room = await prisma.room.findUnique({
-      where: {
-        id: roomId,
-      },
-      include: {
-        roomType: true,
-      },
-    });
-
-    if (!room) {
-      throw new AppError("Room not found", 404);
-    }
-
-    if (room.status !== "AVAILABLE") {
-      throw new AppError("Room is not available for booking", 409);
-    }
-
-    if (guests > room.roomType.capacity) {
-      throw new AppError(
-        `Number of guests exceeds room capacity of ${room.roomType.capacity}`,
-        400,
-      );
-    }
-
-    const overlappingReservation = await prisma.reservation.findFirst({
-      where: {
-        roomId,
-        status: {
-          not: "CANCELLED",
-        },
-        checkIn: {
-          lt: checkOut,
-        },
-        checkOut: {
-          gt: checkIn,
-        },
-      },
-    });
-
-    if (overlappingReservation) {
-      throw new AppError("Room is already booked for the selected dates", 409);
-    }
-
-    const millisecondsPerDay = 24 * 60 * 60 * 1000;
-
-    const nights = Math.ceil(
-      (checkOut.getTime() - checkIn.getTime()) / millisecondsPerDay,
-    );
-
-    const totalAmount = Number(room.roomType.pricePerNight) * nights;
-
     const reservation = await createWithReservationReference((referenceId) =>
-      prisma.reservation.create({
-        data: {
-          referenceId,
-          checkIn,
-          checkOut,
-          guests,
-          totalAmount,
-          roomId,
-          userId,
-        },
+      prisma.$transaction(async (tx) => {
+        // Coordinate booking creation with room-status changes.
+        const lockedRooms = await tx.$queryRaw<{ id: string }[]>`
+            SELECT "id"
+            FROM "Room"
+            WHERE "id" = ${roomId}
+            FOR UPDATE
+          `;
+
+        if (lockedRooms.length === 0) {
+          throw new AppError("Room not found", 404);
+        }
+
+        const room = await tx.room.findUnique({
+          where: { id: roomId },
+          include: { roomType: true },
+        });
+
+        if (!room) {
+          throw new AppError("Room not found", 404);
+        }
+
+        if (room.status !== "AVAILABLE") {
+          throw new AppError("Room is not available for booking", 409);
+        }
+
+        if (guests > room.roomType.capacity) {
+          throw new AppError(
+            `Number of guests exceeds room capacity of ${room.roomType.capacity}`,
+            400,
+          );
+        }
+
+        const overlappingReservation = await tx.reservation.findFirst({
+          where: {
+            roomId,
+            status: {
+              not: "CANCELLED",
+            },
+            checkIn: {
+              lt: checkOut,
+            },
+            checkOut: {
+              gt: checkIn,
+            },
+          },
+        });
+
+        if (overlappingReservation) {
+          throw new AppError(
+            "Room is already booked for the selected dates",
+            409,
+          );
+        }
+
+        const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+        const nights = Math.ceil(
+          (checkOut.getTime() - checkIn.getTime()) / millisecondsPerDay,
+        );
+
+        const totalAmount = Number(room.roomType.pricePerNight) * nights;
+
+        return tx.reservation.create({
+          data: {
+            referenceId,
+            checkIn,
+            checkOut,
+            guests,
+            totalAmount,
+            roomId,
+            userId,
+          },
+        });
       }),
     );
 

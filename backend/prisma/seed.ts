@@ -165,6 +165,7 @@ async function main() {
 
   const reservation = await prisma.reservation.create({
     data: {
+      referenceId: "STY-SEED-0001",
       checkIn: new Date("2026-10-01"),
       checkOut: new Date("2026-10-04"),
       guests: 2,

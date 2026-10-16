@@ -7,6 +7,9 @@ import { getStringParam } from "../utils/getParam.js";
 
 export const getRooms = asyncHandler(async (req: Request, res: Response) => {
   const rooms = await prisma.room.findMany({
+    where: {
+      status: "AVAILABLE",
+    },
     include: {
       roomType: true,
     },
@@ -15,11 +18,26 @@ export const getRooms = asyncHandler(async (req: Request, res: Response) => {
   res.json(rooms);
 });
 
+export const getAllRoomsForAdmin = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const rooms = await prisma.room.findMany({
+      include: {
+        roomType: true,
+      },
+    });
+
+    res.json(rooms);
+  },
+);
+
 export const getRoomById = asyncHandler(async (req: Request, res: Response) => {
   const id = getStringParam(req.params.id, "room ID");
 
-  const room = await prisma.room.findUnique({
-    where: { id },
+  const room = await prisma.room.findFirst({
+    where: {
+      id,
+      status: "AVAILABLE",
+    },
     include: {
       roomType: true,
     },
@@ -71,7 +89,7 @@ export const createRoom = asyncHandler(async (req: Request, res: Response) => {
 export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
   const id = getStringParam(req.params.id, "room ID");
 
-  const { roomNumber, roomTypeId, status } = req.body;
+  const { roomNumber, roomTypeId } = req.body;
 
   const room = await prisma.room.findUnique({
     where: { id },
@@ -106,7 +124,6 @@ export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
     data: {
       roomNumber,
       roomTypeId,
-      status,
     },
     include: {
       roomType: true,
@@ -115,6 +132,97 @@ export const updateRoom = asyncHandler(async (req: Request, res: Response) => {
 
   res.json(updatedRoom);
 });
+
+export const updateRoomStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getStringParam(req.params.id, "room ID");
+    const { status, reason } = req.body;
+    const adminId = req.user?.userId;
+
+    if (!adminId) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const updatedRoom = await prisma.$transaction(async (tx) => {
+      // Lock the room so booking creation and status changes
+      // can coordinate on the same database row.
+      const lockedRooms = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Room"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `;
+
+      if (lockedRooms.length === 0) {
+        throw new AppError("Room not found", 404);
+      }
+
+      const room = await tx.room.findUnique({
+        where: { id },
+      });
+
+      if (!room) {
+        throw new AppError("Room not found", 404);
+      }
+
+      // A no-op should not require a reason or create history.
+      if (room.status === status) {
+        return tx.room.findUniqueOrThrow({
+          where: { id },
+          include: { roomType: true },
+        });
+      }
+
+      if (status !== "AVAILABLE" && !reason) {
+        throw new AppError("A reason is required for this room status", 400);
+      }
+
+      if (status !== "AVAILABLE") {
+        const conflictingReservation = await tx.reservation.findFirst({
+          where: {
+            roomId: id,
+            status: {
+              in: ["PENDING", "CONFIRMED"],
+            },
+            checkOut: {
+              gt: new Date(),
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (conflictingReservation) {
+          throw new AppError(
+            "This room has an active or upcoming reservation and cannot be marked unavailable",
+            409,
+          );
+        }
+      }
+
+      const updated = await tx.room.update({
+        where: { id },
+        data: { status },
+        include: { roomType: true },
+      });
+
+      await tx.roomStatusHistory.create({
+        data: {
+          roomId: id,
+          adminId,
+          previousStatus: room.status,
+          newStatus: status,
+          reason: reason ?? "Room restored to available status",
+        },
+      });
+
+      return updated;
+    });
+
+    res.json(updatedRoom);
+  },
+);
 
 export const deleteRoom = asyncHandler(async (req: Request, res: Response) => {
   const id = getStringParam(req.params.id, "room ID");

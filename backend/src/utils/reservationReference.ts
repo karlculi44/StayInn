@@ -6,9 +6,8 @@ const referenceGenerationAttempts = 3;
 
 export function generateReservationReferenceId(): string {
   const generateSegment = () =>
-    Array.from(
-      { length: 4 },
-      () => referenceAlphabet.charAt(randomInt(referenceAlphabet.length)),
+    Array.from({ length: 4 }, () =>
+      referenceAlphabet.charAt(randomInt(referenceAlphabet.length)),
     ).join("");
 
   return `STY-${generateSegment()}-${generateSegment()}`;

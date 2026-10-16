@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import {
   createRoom,
   deleteRoom,
-  getRooms,
+  getAllRoomsForAdmin,
   updateRoom,
+  updateRoomStatus,
 } from "../../services/room.service";
 import { getRoomTypes } from "../../services/room-type.service";
 import { ErrorState } from "../../components/ui/States";
@@ -11,13 +12,15 @@ import { ErrorState } from "../../components/ui/States";
 type Room = {
   id: string;
   roomNumber: string;
-  status: string;
+  status: RoomStatus;
   roomType: {
     name: string;
     capacity: number;
     pricePerNight: string;
   };
 };
+
+type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "INACTIVE";
 
 type RoomType = {
   id: string;
@@ -32,6 +35,8 @@ export default function Rooms() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [roomNumber, setRoomNumber] = useState("");
   const [roomTypeId, setRoomTypeId] = useState("");
+  const [roomStatus, setRoomStatus] = useState<RoomStatus>("AVAILABLE");
+  const [statusReason, setStatusReason] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState("");
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
@@ -39,7 +44,7 @@ export default function Rooms() {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const data = await getRooms();
+        const data = await getAllRoomsForAdmin();
         setRooms(data);
       } catch {
         setError("Unable to load rooms.");
@@ -98,6 +103,11 @@ export default function Rooms() {
       return;
     }
 
+    if (roomStatus !== "AVAILABLE" && !statusReason.trim()) {
+      setFormError("Please provide a reason for this room status.");
+      return;
+    }
+
     setIsCreating(true);
     setFormError("");
 
@@ -107,14 +117,25 @@ export default function Rooms() {
         roomTypeId,
       });
 
+      const updatedRoomWithStatus =
+        roomStatus === rooms.find((room) => room.id === editingRoomId)?.status
+          ? updatedRoom
+          : await updateRoomStatus(
+              editingRoomId,
+              roomStatus,
+              statusReason.trim() || undefined,
+            );
+
       setRooms((currentRooms) =>
         currentRooms.map((room) =>
-          room.id === updatedRoom.id ? updatedRoom : room,
+          room.id === updatedRoomWithStatus.id ? updatedRoomWithStatus : room,
         ),
       );
 
       setRoomNumber("");
       setRoomTypeId("");
+      setRoomStatus("AVAILABLE");
+      setStatusReason("");
       setEditingRoomId(null);
       setIsFormOpen(false);
     } catch (error: any) {
@@ -203,6 +224,38 @@ export default function Rooms() {
               </select>
             </div>
 
+            {editingRoomId && (
+              <div>
+                <label className="text-sm font-medium">Status</label>
+
+                <select
+                  value={roomStatus}
+                  onChange={(event) =>
+                    setRoomStatus(event.target.value as RoomStatus)
+                  }
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                >
+                  <option value="AVAILABLE">Available</option>
+                  <option value="MAINTENANCE">Maintenance</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+            )}
+
+            {editingRoomId && roomStatus !== "AVAILABLE" && (
+              <div>
+                <label className="text-sm font-medium">Status Reason</label>
+
+                <input
+                  type="text"
+                  value={statusReason}
+                  onChange={(event) => setStatusReason(event.target.value)}
+                  placeholder="e.g. Scheduled maintenance"
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                />
+              </div>
+            )}
+
             {formError && <p className="text-sm text-red-600">{formError}</p>}
 
             <div className="flex gap-3">
@@ -227,6 +280,8 @@ export default function Rooms() {
                   setEditingRoomId(null);
                   setRoomNumber("");
                   setRoomTypeId("");
+                  setRoomStatus("AVAILABLE");
+                  setStatusReason("");
                   setFormError("");
                 }}
                 className="rounded-full border px-5 py-3 text-sm font-semibold"
@@ -289,6 +344,8 @@ export default function Rooms() {
                                 (type) => type.name === room.roomType.name,
                               )?.id ?? "",
                             );
+                            setRoomStatus(room.status);
+                            setStatusReason("");
                             setFormError("");
                             setIsFormOpen(true);
                           }}

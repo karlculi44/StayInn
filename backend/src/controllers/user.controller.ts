@@ -5,6 +5,7 @@ import { getStringParam } from "../utils/getParam.js";
 import { AppError } from "../utils/AppError.js";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
+ 
   const users = await prisma.user.findMany({
     select: {
       id: true,

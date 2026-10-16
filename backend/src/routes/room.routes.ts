@@ -6,18 +6,23 @@ import {
   updateRoom,
   deleteRoom,
   getAvailableRooms,
+  updateRoomStatus,
+  getAllRoomsForAdmin,
 } from "../controllers/room.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 import {
   createRoomSchema,
   updateRoomSchema,
   availabilitySchema,
+  updateRoomStatusSchema,
 } from "../schemas/room.schema.js";
 import { validate } from "../middleware/validate.middleware.js";
 
 const router = Router();
 
 router.get("/", getRooms);
+
+router.get("/admin", verifyToken, authorize("ADMIN"), getAllRoomsForAdmin);
 
 router.get(
   "/availability",
@@ -41,6 +46,14 @@ router.patch(
   authorize("ADMIN"),
   validate(updateRoomSchema),
   updateRoom,
+);
+
+router.patch(
+  "/:id/status",
+  verifyToken,
+  authorize("ADMIN"),
+  validate(updateRoomStatusSchema),
+  updateRoomStatus,
 );
 
 router.delete("/:id", verifyToken, authorize("ADMIN"), deleteRoom);

@@ -18,6 +18,7 @@ model User {
 
   reservations Reservation[]
   refreshTokens RefreshToken[]
+  roomStatusChanges RoomStatusHistory[] @relation("RoomStatusChangedBy")
 }
 
 enum Role {
@@ -50,12 +51,30 @@ model Room {
   updatedAt DateTime @updatedAt
 
   reservations Reservation[]
+  statusHistory RoomStatusHistory[]
 }
 
 enum RoomStatus {
   AVAILABLE
   MAINTENANCE
   INACTIVE
+}
+
+model RoomStatusHistory {
+  id             String     @id @default(uuid())
+  previousStatus RoomStatus
+  newStatus      RoomStatus
+  reason         String
+  createdAt      DateTime   @default(now())
+
+  roomId String?
+  room   Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  adminId String?
+  admin   User?   @relation("RoomStatusChangedBy", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([roomId, createdAt])
+  @@index([adminId, createdAt])
 }
 
 model Reservation {
