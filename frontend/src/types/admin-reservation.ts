@@ -14,11 +14,13 @@ export type AdminReservation = {
   totalAmount: string;
   status: ReservationStatus;
   user: {
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
   };
   room: {
+    id: string;
     roomNumber: string;
     roomType: {
       name: string;

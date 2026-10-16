@@ -5,7 +5,10 @@ import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import type { ReservationStatus } from "@prisma/client";
 import type { AdminReservationQuery } from "../schemas/reservation.schema.js";
-import { createReservationForUser } from "../services/reservationCreation.js";
+import {
+  createReservationForUser,
+  updateReservationForAdmin,
+} from "../services/reservationCreation.js";
 
 const validTransitions: Record<ReservationStatus, ReservationStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -48,6 +51,23 @@ export const createAdminReservation = asyncHandler(
     });
 
     res.status(201).json(reservation);
+  },
+);
+
+export const updateAdminReservation = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getStringParam(req.params.id, "reservation ID");
+    const { userId, roomId, checkIn, checkOut, guests } = req.body;
+
+    const reservation = await updateReservationForAdmin(id, {
+      userId,
+      roomId,
+      checkIn,
+      checkOut,
+      guests,
+    });
+
+    res.json(reservation);
   },
 );
 

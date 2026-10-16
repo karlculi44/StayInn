@@ -3,6 +3,7 @@ import { validate } from "../middleware/validate.middleware.js";
 import {
   createReservationSchema,
   createAdminReservationSchema,
+  updateAdminReservationSchema,
   adminReservationQuerySchema,
   updateReservationStatusSchema,
 } from "../schemas/reservation.schema.js";
@@ -14,6 +15,7 @@ import {
   cancelReservation,
   getAllReservations,
   updateReservationStatus,
+  updateAdminReservation,
 } from "../controllers/reservation.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 
@@ -33,6 +35,13 @@ router.get(
   authorize("ADMIN"),
   validate(adminReservationQuerySchema, "query"),
   getAllReservations,
+);
+router.patch(
+  "/admin/:id",
+  verifyToken,
+  authorize("ADMIN"),
+  validate(updateAdminReservationSchema),
+  updateAdminReservation,
 );
 router.get("/:id", verifyToken, getReservationById);
 router.patch("/:id/cancel", verifyToken, cancelReservation);

@@ -6,6 +6,7 @@ import {
   updateRoom,
   deleteRoom,
   getAvailableRooms,
+  getAvailableRoomsForAdmin,
   updateRoomStatus,
   getAllRoomsForAdmin,
 } from "../controllers/room.controller.js";
@@ -14,6 +15,7 @@ import {
   createRoomSchema,
   updateRoomSchema,
   availabilitySchema,
+  adminAvailabilitySchema,
   updateRoomStatusSchema,
 } from "../schemas/room.schema.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -23,6 +25,14 @@ const router = Router();
 router.get("/", getRooms);
 
 router.get("/admin", verifyToken, authorize("ADMIN"), getAllRoomsForAdmin);
+
+router.get(
+  "/availability/admin",
+  verifyToken,
+  authorize("ADMIN"),
+  validate(adminAvailabilitySchema, "query"),
+  getAvailableRoomsForAdmin,
+);
 
 router.get(
   "/availability",

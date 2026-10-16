@@ -33,6 +33,9 @@ export const createAdminReservationSchema =
     userId: z.uuid("Invalid user ID"),
   });
 
+export const updateAdminReservationSchema =
+  createAdminReservationSchema;
+
 export const adminReservationQuerySchema = z
   .object({
     status: z

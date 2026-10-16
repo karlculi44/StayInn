@@ -100,6 +100,25 @@ const createAdminReservation = async (
       totalAmount: 0.01,
     });
 
+const editAdminReservation = async (
+  reservationId: string,
+  userId: string,
+  checkIn: Date,
+  checkOut: Date,
+  guests = 2,
+  roomId = testRoomId,
+) =>
+  request(app)
+    .patch(`/api/reservations/admin/${reservationId}`)
+    .set("Cookie", `accessToken=${accessToken}`)
+    .send({
+      userId,
+      roomId,
+      checkIn: checkIn.toISOString(),
+      checkOut: checkOut.toISOString(),
+      guests,
+    });
+
 describe("Reservation booking integration tests", () => {
   beforeAll(async () => {
     const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
@@ -325,6 +344,177 @@ describe("Reservation booking integration tests", () => {
     expect(response.body.message).toBe(
       "Number of guests exceeds room capacity of 2",
     );
+  });
+
+  it("allows an admin to edit a reservation without conflicting with itself and recalculates the total", async () => {
+    const user = await createTestUser();
+    const checkIn = futureDate(52);
+    const checkOut = futureDate(55);
+    const original = await createExistingReservation(
+      user.id,
+      futureDate(50),
+      futureDate(51),
+      "PENDING",
+    );
+
+    const response = await editAdminReservation(
+      original.id,
+      user.id,
+      checkIn,
+      checkOut,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(original.id);
+    expect(response.body.referenceId).toBe(original.referenceId);
+    expect(response.body.status).toBe("PENDING");
+    expect(Number(response.body.totalAmount)).toBe(300);
+    expect(response.body.user.id).toBe(user.id);
+    expect(response.body.room.id).toBe(testRoomId);
+  });
+
+  it("rejects edits that overlap another active reservation", async () => {
+    const user = await createTestUser();
+    const otherUser = await createTestUser();
+    const original = await createExistingReservation(
+      user.id,
+      futureDate(56),
+      futureDate(58),
+      "PENDING",
+    );
+    await createExistingReservation(
+      otherUser.id,
+      futureDate(60),
+      futureDate(63),
+    );
+
+    const response = await editAdminReservation(
+      original.id,
+      user.id,
+      futureDate(61),
+      futureDate(64),
+    );
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe(
+      "Room is already booked for the selected dates",
+    );
+  });
+
+  it("rejects edits with nonexistent users, excess guests, or unavailable rooms", async () => {
+    const user = await createTestUser();
+    const original = await createExistingReservation(
+      user.id,
+      futureDate(65),
+      futureDate(67),
+      "PENDING",
+    );
+
+    const missingUserResponse = await editAdminReservation(
+      original.id,
+      randomUUID(),
+      futureDate(68),
+      futureDate(70),
+    );
+    expect(missingUserResponse.status).toBe(404);
+    expect(missingUserResponse.body.message).toBe("User not found");
+
+    const capacityResponse = await editAdminReservation(
+      original.id,
+      user.id,
+      futureDate(68),
+      futureDate(70),
+      3,
+    );
+    expect(capacityResponse.status).toBe(400);
+    expect(capacityResponse.body.message).toBe(
+      "Number of guests exceeds room capacity of 2",
+    );
+
+    await prisma.room.update({
+      where: { id: testRoomId },
+      data: { status: "MAINTENANCE" },
+    });
+    try {
+      const unavailableRoomResponse = await editAdminReservation(
+        original.id,
+        user.id,
+        futureDate(68),
+        futureDate(70),
+      );
+      expect(unavailableRoomResponse.status).toBe(409);
+      expect(unavailableRoomResponse.body.message).toBe(
+        "Room is not available for booking",
+      );
+    } finally {
+      await prisma.room.update({
+        where: { id: testRoomId },
+        data: { status: "AVAILABLE" },
+      });
+    }
+  });
+
+  it("does not allow guests to edit reservations and rejects terminal reservations", async () => {
+    const user = await createTestUser();
+    const reservation = await createExistingReservation(
+      user.id,
+      futureDate(72),
+      futureDate(74),
+      "CANCELLED",
+    );
+    const guestToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+
+    const guestResponse = await request(app)
+      .patch(`/api/reservations/admin/${reservation.id}`)
+      .set("Cookie", `accessToken=${guestToken}`)
+      .send({
+        userId: user.id,
+        roomId: testRoomId,
+        checkIn: futureDate(75).toISOString(),
+        checkOut: futureDate(77).toISOString(),
+        guests: 2,
+      });
+    expect(guestResponse.status).toBe(403);
+
+    const terminalResponse = await editAdminReservation(
+      reservation.id,
+      user.id,
+      futureDate(75),
+      futureDate(77),
+    );
+    expect(terminalResponse.status).toBe(400);
+    expect(terminalResponse.body.message).toBe(
+      "Only pending or confirmed reservations can be edited",
+    );
+  });
+
+  it("provides an admin availability lookup that excludes the reservation being edited", async () => {
+    const user = await createTestUser();
+    const checkIn = futureDate(78);
+    const checkOut = futureDate(80);
+    const reservation = await createExistingReservation(
+      user.id,
+      checkIn,
+      checkOut,
+      "PENDING",
+    );
+
+    const response = await request(app)
+      .get("/api/rooms/availability/admin")
+      .query({
+        checkIn: checkIn.toISOString(),
+        checkOut: checkOut.toISOString(),
+        excludeReservationId: reservation.id,
+      })
+      .set("Cookie", `accessToken=${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.some((room: { id: string }) => room.id === testRoomId))
+      .toBe(true);
   });
 
   it("allows only one of two simultaneous overlapping bookings", async () => {

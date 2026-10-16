@@ -35,4 +35,9 @@ export const availabilitySchema = z
     path: ["checkOut"],
   });
 
+export const adminAvailabilitySchema = availabilitySchema.safeExtend({
+  excludeReservationId: z.uuid("Invalid reservation ID"),
+});
+
 export type AvailabilityQuery = z.infer<typeof availabilitySchema>;
+export type AdminAvailabilityQuery = z.infer<typeof adminAvailabilitySchema>;

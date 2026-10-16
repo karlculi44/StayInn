@@ -1,5 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import type { AvailabilityQuery } from "../schemas/room.schema.js";
+import type {
+  AdminAvailabilityQuery,
+  AvailabilityQuery,
+} from "../schemas/room.schema.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -269,3 +272,42 @@ export const getAvailableRooms = async (req: Request, res: Response) => {
 
   res.json(rooms);
 };
+
+export const getAvailableRoomsForAdmin = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { checkIn, checkOut, excludeReservationId } =
+      req.validated as AdminAvailabilityQuery;
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: excludeReservationId },
+      select: { status: true },
+    });
+
+    if (!reservation) {
+      throw new AppError("Reservation not found", 404);
+    }
+
+    if (reservation.status !== "PENDING" && reservation.status !== "CONFIRMED") {
+      throw new AppError(
+        "Only pending or confirmed reservations can be edited",
+        400,
+      );
+    }
+
+    const rooms = await prisma.room.findMany({
+      where: {
+        status: "AVAILABLE",
+        reservations: {
+          none: {
+            id: { not: excludeReservationId },
+            status: { not: "CANCELLED" },
+            checkIn: { lt: checkOut },
+            checkOut: { gt: checkIn },
+          },
+        },
+      },
+      include: { roomType: true },
+    });
+
+    res.json(rooms);
+  },
+);

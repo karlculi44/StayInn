@@ -3,6 +3,7 @@ import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import {
   createAdminReservation,
   getAdminReservations,
+  updateAdminReservation,
   updateReservationStatus,
 } from "../../services/reservation.service";
 import type {
@@ -15,6 +16,8 @@ import { getAvailableRooms } from "../../services/room.service";
 import { getUsers, type AdminUser } from "../../services/user.service";
 import type { RoomListing } from "../../types";
 import axios from "axios";
+import { createPortal } from "react-dom";
+import ConfirmCancelReservationModal from "../../components/ui/ConfirmCancelReservationModal";
 
 const statusOptions: Array<"ALL" | ReservationStatus> = [
   "ALL",
@@ -24,11 +27,32 @@ const statusOptions: Array<"ALL" | ReservationStatus> = [
   "COMPLETED",
 ];
 
+const statusTransitions: Record<ReservationStatus, ReservationStatus[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED"],
+  CONFIRMED: ["COMPLETED", "CANCELLED"],
+  CANCELLED: [],
+  COMPLETED: [],
+};
+
+const statusActionLabels: Record<ReservationStatus, string> = {
+  PENDING: "Set as pending",
+  CONFIRMED: "Confirm reservation",
+  CANCELLED: "Cancel reservation",
+  COMPLETED: "Mark as completed",
+};
+
 const pageSize = 10;
 
 type ReservationFormErrors = Partial<
   Record<"guest" | "checkIn" | "checkOut" | "guests" | "room", string>
 >;
+
+type StatusMenu = {
+  reservation: AdminReservation;
+  actions: ReservationStatus[];
+  top: number;
+  left: number;
+};
 
 const getTodayDateInput = () => {
   const today = new Date();
@@ -64,12 +88,20 @@ export default function Reservations() {
   const [updatingReservationId, setUpdatingReservationId] = useState<
     string | null
   >(null);
+  const [reservationToCancel, setReservationToCancel] =
+    useState<AdminReservation | null>(null);
+  const [statusMenu, setStatusMenu] = useState<StatusMenu | null>(null);
+  const statusMenuRef = useRef<HTMLDivElement | null>(null);
+  const statusMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const firstStatusActionRef = useRef<HTMLButtonElement | null>(null);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userLoadError, setUserLoadError] = useState("");
   const [guestSearch, setGuestSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<
+    Pick<AdminUser, "id" | "firstName" | "lastName" | "email"> | null
+  >(null);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guestCount, setGuestCount] = useState("1");
@@ -80,6 +112,8 @@ export default function Reservations() {
   const [isCreatingReservation, setIsCreatingReservation] = useState(false);
   const [formErrors, setFormErrors] = useState<ReservationFormErrors>({});
   const roomRequestId = useRef(0);
+  const [editingReservation, setEditingReservation] =
+    useState<AdminReservation | null>(null);
 
   const fetchReservations = async () => {
     const data = await getAdminReservations();
@@ -94,6 +128,8 @@ export default function Reservations() {
   const loadAvailableRooms = async (
     nextCheckIn: string,
     nextCheckOut: string,
+    excludeReservationId?: string,
+    initialRoomId?: string,
   ) => {
     const requestId = ++roomRequestId.current;
     const isValid =
@@ -105,18 +141,26 @@ export default function Reservations() {
     setSelectedRoomId("");
     setRoomLoadError("");
 
-    if (!isCreateFormOpen || !isValid) {
+    if (!(isCreateFormOpen || excludeReservationId) || !isValid) {
       setIsLoadingRooms(false);
       return;
     }
 
     setIsLoadingRooms(true);
     try {
-      const roomData = await getAvailableRooms(nextCheckIn, nextCheckOut);
+      const roomData = await getAvailableRooms(
+        nextCheckIn,
+        nextCheckOut,
+        excludeReservationId ?? editingReservation?.id,
+      );
       if (requestId === roomRequestId.current) {
-        setAvailableRooms(
-          roomData.filter((room) => room.status === "AVAILABLE"),
+        const eligibleRooms = roomData.filter(
+          (room) => room.status === "AVAILABLE",
         );
+        setAvailableRooms(eligibleRooms);
+        if (initialRoomId && eligibleRooms.some((room) => room.id === initialRoomId)) {
+          setSelectedRoomId(initialRoomId);
+        }
       }
     } catch {
       if (requestId === roomRequestId.current) {
@@ -142,6 +186,51 @@ export default function Reservations() {
 
     void loadReservations();
   }, []);
+
+  useEffect(() => {
+    if (!statusMenu) {
+      return;
+    }
+
+    firstStatusActionRef.current?.focus();
+
+    const closeMenuOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        !statusMenuRef.current?.contains(target) &&
+        !statusMenuButtonRef.current?.contains(target)
+      ) {
+        setStatusMenu(null);
+        statusMenuButtonRef.current = null;
+      }
+    };
+
+    const closeMenuOnKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setStatusMenu(null);
+        statusMenuButtonRef.current?.focus();
+        statusMenuButtonRef.current = null;
+      }
+    };
+
+    const closeMenuOnScroll = () => {
+      setStatusMenu(null);
+      statusMenuButtonRef.current = null;
+    };
+
+    document.addEventListener("pointerdown", closeMenuOnOutsideClick);
+    document.addEventListener("keydown", closeMenuOnKeyDown);
+    window.addEventListener("scroll", closeMenuOnScroll, true);
+    window.addEventListener("resize", closeMenuOnScroll);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeMenuOnKeyDown);
+      window.removeEventListener("scroll", closeMenuOnScroll, true);
+      window.removeEventListener("resize", closeMenuOnScroll);
+    };
+  }, [statusMenu]);
 
   const filteredReservations = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -180,35 +269,99 @@ export default function Reservations() {
   const handleStatusChange = async (
     reservation: AdminReservation,
     status: ReservationStatus,
-  ) => {
-    if (status === "CANCELLED") {
-      const confirmed = window.confirm(
-        `Are you sure you want to cancel reservation ${reservation.referenceId}?`,
-      );
-
-      if (!confirmed) {
-        return;
-      }
-    }
-
+  ): Promise<boolean> => {
     setUpdatingReservationId(reservation.id);
     setActionError("");
     setSuccessMessage("");
 
     try {
-      await updateReservationStatus(reservation.id, status);
-      await fetchReservations();
+      const updatedReservation = await updateReservationStatus(
+        reservation.id,
+        status,
+      );
+      setReservations((currentReservations) =>
+        currentReservations.map((currentReservation) =>
+          currentReservation.id === reservation.id
+            ? { ...currentReservation, status: updatedReservation.status }
+            : currentReservation,
+        ),
+      );
       setSuccessMessage(
         `Reservation ${reservation.referenceId} was updated successfully.`,
       );
+      try {
+        await fetchReservations();
+      } catch {
+        setActionError(
+          "Reservation status was updated, but the table could not be refreshed.",
+        );
+      }
+      return true;
     } catch {
       setActionError("Unable to update reservation status.");
+      return false;
     } finally {
       setUpdatingReservationId(null);
     }
   };
 
+  const confirmReservationCancellation = async () => {
+    if (!reservationToCancel) {
+      return;
+    }
+
+    const cancelled = await handleStatusChange(
+      reservationToCancel,
+      "CANCELLED",
+    );
+    if (cancelled) {
+      setReservationToCancel(null);
+    }
+  };
+
+  const openStatusMenu = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    reservation: AdminReservation,
+  ) => {
+    const actions = statusTransitions[reservation.status];
+    if (actions.length === 0) {
+      return;
+    }
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 224;
+    const menuHeight = actions.length * 44 + 8;
+    const left = Math.max(
+      8,
+      Math.min(bounds.right - menuWidth, window.innerWidth - menuWidth - 8),
+    );
+    const top =
+      bounds.bottom + menuHeight + 8 <= window.innerHeight
+        ? bounds.bottom + 4
+        : Math.max(8, bounds.top - menuHeight - 4);
+
+    statusMenuButtonRef.current = event.currentTarget;
+    setStatusMenu({ reservation, actions, top, left });
+  };
+
+  const selectStatusAction = (
+    reservation: AdminReservation,
+    status: ReservationStatus,
+  ) => {
+    setStatusMenu(null);
+    statusMenuButtonRef.current = null;
+
+    if (status === "CANCELLED") {
+      setActionError("");
+      setReservationToCancel(reservation);
+      return;
+    }
+
+    void handleStatusChange(reservation, status);
+  };
+
   const openCreateForm = () => {
+    setEditingReservation(null);
     setGuestSearch("");
     setSelectedUser(null);
     setCheckIn("");
@@ -237,6 +390,39 @@ export default function Reservations() {
     roomRequestId.current += 1;
     setIsLoadingRooms(false);
     setIsCreateFormOpen(false);
+    setEditingReservation(null);
+  };
+
+  const openEditForm = (reservation: AdminReservation) => {
+    if (reservation.status !== "PENDING" && reservation.status !== "CONFIRMED") {
+      return;
+    }
+
+    setEditingReservation(reservation);
+    setGuestSearch("");
+    setSelectedUser({
+      id: reservation.user.id,
+      firstName: reservation.user.firstName,
+      lastName: reservation.user.lastName,
+      email: reservation.user.email,
+    });
+    setCheckIn(reservation.checkIn.slice(0, 10));
+    setCheckOut(reservation.checkOut.slice(0, 10));
+    setGuestCount(String(reservation.guests));
+    setAvailableRooms([]);
+    setSelectedRoomId("");
+    setRoomLoadError("");
+    setFormErrors({});
+    setActionError("");
+    setSuccessMessage("");
+    setIsCreateFormOpen(true);
+    setIsLoadingRooms(false);
+    void loadAvailableRooms(
+      reservation.checkIn.slice(0, 10),
+      reservation.checkOut.slice(0, 10),
+      reservation.id,
+      reservation.room.id,
+    );
   };
 
   const matchingUsers = users.filter((user) => {
@@ -265,7 +451,7 @@ export default function Reservations() {
     ? Number(selectedRoom.roomType.pricePerNight) * numberOfNights
     : 0;
 
-  const handleCreateReservation = async (
+  const handleSaveReservation = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
@@ -281,10 +467,7 @@ export default function Reservations() {
     if (!checkOut || !checkIn || checkOut <= checkIn) {
       nextErrors.checkOut = "Check-out must be after check-in.";
     }
-    if (
-      !Number.isInteger(parsedGuestCount) ||
-      parsedGuestCount < 1
-    ) {
+    if (!Number.isInteger(parsedGuestCount) || parsedGuestCount < 1) {
       nextErrors.guests = "Enter a valid number of guests.";
     } else if (
       selectedRoom &&
@@ -306,25 +489,33 @@ export default function Reservations() {
     setSuccessMessage("");
 
     try {
-      const createdReservation = await createAdminReservation({
+      const reservationInput = {
         userId: selectedUser.id,
         roomId: selectedRoom.id,
         checkIn,
         checkOut,
         guests: parsedGuestCount,
-      });
+      };
+      const savedReservation = editingReservation
+        ? await updateAdminReservation(editingReservation.id, reservationInput)
+        : await createAdminReservation(reservationInput);
 
       setIsCreateFormOpen(false);
+      setEditingReservation(null);
       setSuccessMessage(
-        `Reservation ${createdReservation.referenceId} was created successfully.`,
+        editingReservation
+          ? `Reservation ${savedReservation.referenceId} was updated successfully.`
+          : `Reservation ${savedReservation.referenceId} was created successfully.`,
       );
-      setCurrentPage(1);
+      if (!editingReservation) {
+        setCurrentPage(1);
+      }
 
       try {
         await fetchReservations();
       } catch {
         setActionError(
-          `Reservation ${createdReservation.referenceId} was created, but the table could not be refreshed.`,
+          `Reservation ${savedReservation.referenceId} was saved, but the table could not be refreshed.`,
         );
       }
     } catch (error: unknown) {
@@ -333,7 +524,7 @@ export default function Reservations() {
         : undefined;
       setActionError(
         message ??
-          "Unable to create the reservation. The room may no longer be available.",
+          `Unable to ${editingReservation ? "update" : "create"} the reservation. The room may no longer be available.`,
       );
     } finally {
       setIsCreatingReservation(false);
@@ -377,11 +568,12 @@ export default function Reservations() {
                   id="create-reservation-title"
                   className="mt-2 font-display text-3xl"
                 >
-                  Create Reservation
+                  {editingReservation ? "Edit Reservation" : "Create Reservation"}
                 </h2>
                 <p className="mt-2 text-sm text-muted">
-                  Reservations can currently be created for registered users
-                  only.
+                  {editingReservation
+                    ? "Update the guest, stay dates, room, or guest count."
+                    : "Reservations can currently be created for registered users only."}
                 </p>
               </div>
               <button
@@ -396,7 +588,7 @@ export default function Reservations() {
             </div>
 
             <form
-              onSubmit={handleCreateReservation}
+              onSubmit={handleSaveReservation}
               className="mt-6 space-y-5"
               noValidate
             >
@@ -408,9 +600,7 @@ export default function Reservations() {
                       <p className="font-semibold">
                         {selectedUser.firstName} {selectedUser.lastName}
                       </p>
-                      <p className="text-sm text-muted">
-                        {selectedUser.email}
-                      </p>
+                      <p className="text-sm text-muted">{selectedUser.email}</p>
                     </div>
                     <button
                       type="button"
@@ -456,39 +646,41 @@ export default function Reservations() {
                         {userLoadError}
                       </p>
                     )}
-                    {guestSearch.trim() && !isLoadingUsers && !userLoadError && (
-                      <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border">
-                        {matchingUsers.length > 0 ? (
-                          matchingUsers.slice(0, 8).map((user) => (
-                            <button
-                              key={user.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setGuestSearch("");
-                                setFormErrors((current) => ({
-                                  ...current,
-                                  guest: undefined,
-                                }));
-                              }}
-                              className="block w-full border-b px-4 py-3 text-left last:border-b-0 hover:bg-cream focus-visible:bg-cream"
-                            >
-                              <span className="block font-medium">
-                                {user.firstName} {user.lastName}
-                              </span>
-                              <span className="block text-sm text-muted">
-                                {user.email}
-                              </span>
-                            </button>
-                          ))
-                        ) : (
-                          <p className="px-4 py-3 text-sm text-muted">
-                            No matching registered users. Only users with an
-                            existing account can be selected.
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    {guestSearch.trim() &&
+                      !isLoadingUsers &&
+                      !userLoadError && (
+                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border">
+                          {matchingUsers.length > 0 ? (
+                            matchingUsers.slice(0, 8).map((user) => (
+                              <button
+                                key={user.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setGuestSearch("");
+                                  setFormErrors((current) => ({
+                                    ...current,
+                                    guest: undefined,
+                                  }));
+                                }}
+                                className="block w-full border-b px-4 py-3 text-left last:border-b-0 hover:bg-cream focus-visible:bg-cream"
+                              >
+                                <span className="block font-medium">
+                                  {user.firstName} {user.lastName}
+                                </span>
+                                <span className="block text-sm text-muted">
+                                  {user.email}
+                                </span>
+                              </button>
+                            ))
+                          ) : (
+                            <p className="px-4 py-3 text-sm text-muted">
+                              No matching registered users. Only users with an
+                              existing account can be selected.
+                            </p>
+                          )}
+                        </div>
+                      )}
                   </div>
                 )}
                 {formErrors.guest && (
@@ -499,7 +691,9 @@ export default function Reservations() {
               </fieldset>
 
               <fieldset className="rounded-2xl bg-white p-5">
-                <legend className="px-1 font-display text-xl">Stay details</legend>
+                <legend className="px-1 font-display text-xl">
+                  Stay details
+                </legend>
                 <div className="mt-2 grid gap-4 sm:grid-cols-2">
                   <div>
                     <label
@@ -718,8 +912,8 @@ export default function Reservations() {
                   </div>
                 </dl>
                 <p className="mt-3 text-xs text-muted">
-                  Final total is calculated by the server using the current
-                  room price.
+                  Final total is calculated by the server using the current room
+                  price.
                 </p>
               </section>
 
@@ -738,8 +932,12 @@ export default function Reservations() {
                   className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isCreatingReservation
-                    ? "Creating reservation..."
-                    : "Create Reservation"}
+                    ? editingReservation
+                      ? "Saving changes..."
+                      : "Creating reservation..."
+                    : editingReservation
+                      ? "Save Changes"
+                      : "Create Reservation"}
                 </button>
               </div>
             </form>
@@ -868,9 +1066,8 @@ export default function Reservations() {
                       {paginatedReservations.map((reservation) => {
                         const isUpdating =
                           updatingReservationId === reservation.id;
-                        const canCancel =
-                          reservation.status === "PENDING" ||
-                          reservation.status === "CONFIRMED";
+                        const availableTransitions =
+                          statusTransitions[reservation.status];
 
                         return (
                           <tr
@@ -908,68 +1105,65 @@ export default function Reservations() {
                             </td>
 
                             <td className="px-6 py-4">
-                              <ReservationStatusBadge
-                                status={reservation.status}
-                              />
-                            </td>
-
-                            <td className="px-6 py-4">
-                              <div className="flex gap-2">
-                                {reservation.status === "PENDING" && (
+                              <div className="flex items-center gap-2">
+                                <ReservationStatusBadge
+                                  status={reservation.status}
+                                />
+                                {availableTransitions.length > 0 && (
                                   <button
                                     type="button"
                                     disabled={isUpdating}
-                                    onClick={() =>
-                                      handleStatusChange(
-                                        reservation,
-                                        "CONFIRMED",
-                                      )
+                                    aria-label={`Status actions for reservation ${reservation.referenceId}`}
+                                    aria-haspopup="menu"
+                                    aria-expanded={
+                                      statusMenu?.reservation.id ===
+                                      reservation.id
                                     }
-                                    className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                    aria-controls={
+                                      statusMenu?.reservation.id ===
+                                      reservation.id
+                                        ? "reservation-status-menu"
+                                        : undefined
+                                    }
+                                    onClick={(event) => {
+                                      if (
+                                        statusMenu?.reservation.id ===
+                                        reservation.id
+                                      ) {
+                                        setStatusMenu(null);
+                                        statusMenuButtonRef.current = null;
+                                        return;
+                                      }
+                                      openStatusMenu(event, reservation);
+                                    }}
+                                    className="inline-flex size-8 items-center justify-center rounded-full text-muted hover:bg-cream hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50"
                                   >
-                                    {isUpdating ? "Saving..." : "Confirm"}
+                                    <svg
+                                      aria-hidden="true"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                      className="size-5"
+                                    >
+                                      <circle cx="5" cy="12" r="1.8" />
+                                      <circle cx="12" cy="12" r="1.8" />
+                                      <circle cx="19" cy="12" r="1.8" />
+                                    </svg>
                                   </button>
                                 )}
-
-                                {reservation.status === "CONFIRMED" && (
-                                  <button
-                                    type="button"
-                                    disabled={isUpdating}
-                                    onClick={() =>
-                                      handleStatusChange(
-                                        reservation,
-                                        "COMPLETED",
-                                      )
-                                    }
-                                    className="rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {isUpdating
-                                      ? "Saving..."
-                                      : "Mark completed"}
-                                  </button>
-                                )}
-
-                                {canCancel && (
-                                  <button
-                                    type="button"
-                                    disabled={isUpdating}
-                                    onClick={() =>
-                                      handleStatusChange(
-                                        reservation,
-                                        "CANCELLED",
-                                      )
-                                    }
-                                    className="rounded-xl border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                )}
-
-                                {reservation.status !== "PENDING" &&
-                                  reservation.status !== "CONFIRMED" && (
-                                    <span className="text-muted">—</span>
-                                  )}
                               </div>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4">
+                              {(reservation.status === "PENDING" ||
+                                reservation.status === "CONFIRMED") && (
+                                <button
+                                  type="button"
+                                  disabled={isUpdating || isCreatingReservation}
+                                  onClick={() => openEditForm(reservation)}
+                                  className="rounded-full border border-black/15 px-4 py-2 text-sm font-semibold hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Edit
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1014,6 +1208,48 @@ export default function Reservations() {
           </>
         )}
       </div>
+      {statusMenu &&
+        createPortal(
+          <div
+            id="reservation-status-menu"
+            ref={statusMenuRef}
+            role="menu"
+            aria-label={`Status actions for reservation ${statusMenu.reservation.referenceId}`}
+            className="fixed z-60 min-w-56 rounded-xl border border-black/10 bg-white p-1.5 shadow-xl"
+            style={{ top: statusMenu.top, left: statusMenu.left }}
+          >
+            {statusMenu.actions.map((status, index) => (
+              <button
+                key={status}
+                ref={index === 0 ? firstStatusActionRef : undefined}
+                type="button"
+                role="menuitem"
+                onClick={() =>
+                  selectStatusAction(statusMenu.reservation, status)
+                }
+                className={`block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium hover:bg-cream focus-visible:bg-cream focus-visible:outline-none ${
+                  status === "CANCELLED"
+                    ? "text-red-700 hover:text-red-800"
+                    : "text-ink"
+                }`}
+              >
+                {statusActionLabels[status]}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+      <ConfirmCancelReservationModal
+        isOpen={reservationToCancel !== null}
+        referenceId={reservationToCancel?.referenceId ?? ""}
+        isCancelling={
+          reservationToCancel !== null &&
+          updatingReservationId === reservationToCancel.id
+        }
+        error={actionError}
+        onCancel={() => setReservationToCancel(null)}
+        onConfirm={() => void confirmReservationCancellation()}
+      />
     </div>
   );
 }

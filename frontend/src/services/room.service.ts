@@ -22,13 +22,18 @@ export const getRoom = async (id: string): Promise<RoomListing> => {
 export const getAvailableRooms = async (
   checkIn: string,
   checkOut: string,
+  excludeReservationId?: string,
 ) => {
-  const response = await api.get<RoomListing[]>("/rooms/availability", {
+  const response = await api.get<RoomListing[]>(
+    excludeReservationId ? "/rooms/availability/admin" : "/rooms/availability",
+    {
     params: {
       checkIn,
       checkOut,
+      ...(excludeReservationId ? { excludeReservationId } : {}),
     },
-  });
+    },
+  );
 
   return response.data;
 };
