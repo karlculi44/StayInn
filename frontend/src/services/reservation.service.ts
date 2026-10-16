@@ -63,3 +63,18 @@ export const updateReservationStatus = async (
 
   return response.data;
 };
+
+export const createAdminReservation = async (reservation: {
+  userId: string;
+  roomId: string;
+  checkIn: string;
+  checkOut: string;
+  guests: number;
+}): Promise<AdminReservation> => {
+  const response = await api.post<AdminReservation>(
+    "/reservations/admin",
+    reservation,
+  );
+
+  return response.data;
+};

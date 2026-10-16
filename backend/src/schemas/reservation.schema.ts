@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-export const createReservationSchema = z
-  .object({
-    checkIn: z.coerce.date(),
-    checkOut: z.coerce.date(),
-    guests: z.number().int().positive("Guests must be greater than 0"),
-    roomId: z.uuid("Invalid room ID"),
-  })
+const reservationDetailsSchema = z.object({
+  checkIn: z.coerce.date(),
+  checkOut: z.coerce.date(),
+  guests: z.number().int().positive("Guests must be greater than 0"),
+  roomId: z.uuid("Invalid room ID"),
+});
+
+const reservationWithValidDatesSchema = reservationDetailsSchema
   .refine(
     (data) => {
       const today = new Date();
@@ -23,6 +24,13 @@ export const createReservationSchema = z
   .refine((data) => data.checkOut > data.checkIn, {
     message: "Check-out must be after check-in",
     path: ["checkOut"],
+  });
+
+export const createReservationSchema = reservationWithValidDatesSchema;
+
+export const createAdminReservationSchema =
+  reservationWithValidDatesSchema.safeExtend({
+    userId: z.uuid("Invalid user ID"),
   });
 
 export const adminReservationQuerySchema = z

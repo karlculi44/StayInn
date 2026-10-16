@@ -2,11 +2,13 @@ import express from "express";
 import { validate } from "../middleware/validate.middleware.js";
 import {
   createReservationSchema,
+  createAdminReservationSchema,
   adminReservationQuerySchema,
   updateReservationStatusSchema,
 } from "../schemas/reservation.schema.js";
 import {
   createReservation,
+  createAdminReservation,
   getReservationById,
   getReservations,
   cancelReservation,
@@ -18,6 +20,13 @@ import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 const router = express.Router();
 
 router.get("/", verifyToken, getReservations);
+router.post(
+  "/admin",
+  verifyToken,
+  authorize("ADMIN"),
+  validate(createAdminReservationSchema),
+  createAdminReservation,
+);
 router.get(
   "/admin",
   verifyToken,

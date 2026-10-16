@@ -19,8 +19,11 @@ export const getRoom = async (id: string): Promise<RoomListing> => {
   return response.data;
 };
 
-export const getAvailableRooms = async (checkIn: string, checkOut: string) => {
-  const response = await api.get("/rooms/availability", {
+export const getAvailableRooms = async (
+  checkIn: string,
+  checkOut: string,
+) => {
+  const response = await api.get<RoomListing[]>("/rooms/availability", {
     params: {
       checkIn,
       checkOut,

@@ -81,6 +81,25 @@ const bookRoom = async (
     });
 };
 
+const createAdminReservation = async (
+  userId: string,
+  checkIn: Date,
+  checkOut: Date,
+  guests = 2,
+  roomId = testRoomId,
+) =>
+  request(app)
+    .post("/api/reservations/admin")
+    .set("Cookie", `accessToken=${accessToken}`)
+    .send({
+      userId,
+      roomId,
+      checkIn: checkIn.toISOString(),
+      checkOut: checkOut.toISOString(),
+      guests,
+      totalAmount: 0.01,
+    });
+
 describe("Reservation booking integration tests", () => {
   beforeAll(async () => {
     const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
@@ -196,6 +215,116 @@ describe("Reservation booking integration tests", () => {
       where: { id: response.body.id },
     });
     expect(savedReservation.referenceId).toBe(response.body.referenceId);
+  });
+
+  it("allows an admin to create a reservation for an existing user and calculates the total", async () => {
+    const user = await createTestUser();
+    const checkIn = futureDate(35);
+    const checkOut = futureDate(38);
+
+    const response = await createAdminReservation(user.id, checkIn, checkOut);
+
+    expect(response.status).toBe(201);
+    expect(response.body.userId).toBe(user.id);
+    expect(response.body.roomId).toBe(testRoomId);
+    expect(Number(response.body.totalAmount)).toBe(300);
+    expect(response.body.totalAmount).not.toBe(0.01);
+    expect(response.body.referenceId).toMatch(
+      /^STY-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/,
+    );
+    expect(response.body.user.email).toBe(user.email);
+  });
+
+  it("rejects guest access to admin reservation creation", async () => {
+    const user = await createTestUser();
+    const guestToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+
+    const response = await request(app)
+      .post("/api/reservations/admin")
+      .set("Cookie", `accessToken=${guestToken}`)
+      .send({
+        userId: user.id,
+        roomId: testRoomId,
+        checkIn: futureDate(36).toISOString(),
+        checkOut: futureDate(38).toISOString(),
+        guests: 2,
+      });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("rejects admin reservations for nonexistent users", async () => {
+    const response = await createAdminReservation(
+      randomUUID(),
+      futureDate(37),
+      futureDate(39),
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.body.message).toBe("User not found");
+  });
+
+  it("rejects admin reservations for unavailable rooms", async () => {
+    const user = await createTestUser();
+
+    await prisma.room.update({
+      where: { id: testRoomId },
+      data: { status: "MAINTENANCE" },
+    });
+
+    try {
+      const response = await createAdminReservation(
+        user.id,
+        futureDate(40),
+        futureDate(42),
+      );
+
+      expect(response.status).toBe(409);
+      expect(response.body.message).toBe("Room is not available for booking");
+    } finally {
+      await prisma.room.update({
+        where: { id: testRoomId },
+        data: { status: "AVAILABLE" },
+      });
+    }
+  });
+
+  it("rejects admin reservations that overlap an existing reservation", async () => {
+    const user = await createTestUser();
+    const checkIn = futureDate(43);
+    const checkOut = futureDate(46);
+    await createExistingReservation(user.id, checkIn, checkOut);
+
+    const response = await createAdminReservation(
+      user.id,
+      futureDate(44),
+      futureDate(47),
+    );
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe(
+      "Room is already booked for the selected dates",
+    );
+  });
+
+  it("rejects admin reservations that exceed room capacity", async () => {
+    const user = await createTestUser();
+
+    const response = await createAdminReservation(
+      user.id,
+      futureDate(48),
+      futureDate(50),
+      3,
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe(
+      "Number of guests exceeds room capacity of 2",
+    );
   });
 
   it("allows only one of two simultaneous overlapping bookings", async () => {

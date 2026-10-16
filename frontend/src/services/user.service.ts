@@ -1,7 +1,16 @@
 import { api } from "./api";
 
-export const getUsers = async () => {
-  const response = await api.get("/users");
+export type AdminUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  createdAt: string;
+};
+
+export const getUsers = async (): Promise<AdminUser[]> => {
+  const response = await api.get<AdminUser[]>("/users");
   return response.data;
 };
 
