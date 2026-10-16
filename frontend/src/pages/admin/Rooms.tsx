@@ -8,6 +8,7 @@ import {
 } from "../../services/room.service";
 import { getRoomTypes } from "../../services/room-type.service";
 import { ErrorState } from "../../components/ui/States";
+import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 
 type Room = {
   id: string;
@@ -40,6 +41,8 @@ export default function Rooms() {
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState("");
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -145,21 +148,23 @@ export default function Rooms() {
     }
   };
 
-  const handleDeleteRoom = async (id: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this room?",
-    );
-
-    if (!confirmed) {
+  const handleDeleteRoom = async () => {
+    if (!roomToDelete) {
       return;
     }
 
+    setIsDeleting(true);
     try {
-      await deleteRoom(id);
+      await deleteRoom(roomToDelete.id);
 
-      setRooms((currentRooms) => currentRooms.filter((room) => room.id !== id));
+      setRooms((currentRooms) =>
+        currentRooms.filter((room) => room.id !== roomToDelete.id),
+      );
+      setRoomToDelete(null);
     } catch (error: any) {
       setError(error.response?.data?.message || "Unable to delete room.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -356,7 +361,7 @@ export default function Rooms() {
 
                         <button
                           type="button"
-                          onClick={() => handleDeleteRoom(room.id)}
+                          onClick={() => setRoomToDelete(room)}
                           className="text-sm font-semibold text-red-600 underline"
                         >
                           Delete
@@ -370,6 +375,13 @@ export default function Rooms() {
           </div>
         </div>
       )}
+      <ConfirmDeleteModal
+        isOpen={roomToDelete !== null}
+        itemName={roomToDelete ? `Room ${roomToDelete.roomNumber}` : ""}
+        isDeleting={isDeleting}
+        onCancel={() => setRoomToDelete(null)}
+        onConfirm={() => void handleDeleteRoom()}
+      />
     </div>
   );
 }

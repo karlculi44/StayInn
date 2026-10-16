@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { RoomListing } from "../types";
 import { formatCurrency } from "../utils/format";
+import { getRoomTypeImage } from "../utils/room-image";
 
 const roomStatuses = {
   AVAILABLE: { label: "Available", styles: "bg-sage/10 text-sage" },
@@ -14,7 +15,7 @@ const roomStatuses = {
 
 export default function RoomCard({ room }: { room: RoomListing }) {
   const [hasImageError, setHasImageError] = useState(false);
-  const image = room.roomType.image?.trim();
+  const image = getRoomTypeImage(room.roomType.name, room.roomType.image);
   const status = roomStatuses[room.status];
 
   return (

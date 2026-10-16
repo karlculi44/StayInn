@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Reservation } from "../types/reservation";
 import { formatCurrency } from "../utils/format";
+import { getRoomTypeImage } from "../utils/room-image";
 import ReservationStatus from "./ui/ReservationStatus";
 
 type ReservationCardProps = {
@@ -10,7 +11,10 @@ type ReservationCardProps = {
 
 export default function ReservationCard({ reservation }: ReservationCardProps) {
   const [hasImageError, setHasImageError] = useState(false);
-  const image = reservation.room.roomType.image?.trim();
+  const image = getRoomTypeImage(
+    reservation.room.roomType.name,
+    reservation.room.roomType.image,
+  );
   const checkIn = new Date(reservation.checkIn).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

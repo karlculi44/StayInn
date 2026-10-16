@@ -6,6 +6,7 @@ import {
   deleteRoomType,
 } from "../../services/room-type.service";
 import { ErrorState } from "../../components/ui/States";
+import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import axios from "axios";
 
 type RoomType = {
@@ -31,6 +32,10 @@ export default function RoomTypes() {
   const [editingRoomTypeId, setEditingRoomTypeId] = useState<string | null>(
     null,
   );
+  const [roomTypeToDelete, setRoomTypeToDelete] = useState<RoomType | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchRoomTypes = async () => {
@@ -156,21 +161,21 @@ export default function RoomTypes() {
     }
   };
 
-  const handleDeleteRoomType = async (id: string, name: string) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete the "${name}" room type?`,
-    );
-
-    if (!confirmed) return;
+  const handleDeleteRoomType = async () => {
+    if (!roomTypeToDelete) return;
 
     setActionError("");
+    setIsDeleting(true);
 
     try {
-      await deleteRoomType(id);
+      await deleteRoomType(roomTypeToDelete.id);
 
       setRoomTypes((currentRoomTypes) =>
-        currentRoomTypes.filter((roomType) => roomType.id !== id),
+        currentRoomTypes.filter(
+          (roomType) => roomType.id !== roomTypeToDelete.id,
+        ),
       );
+      setRoomTypeToDelete(null);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         setActionError(
@@ -179,6 +184,8 @@ export default function RoomTypes() {
       } else {
         setActionError("An unexpected error occurred.");
       }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -375,7 +382,7 @@ export default function RoomTypes() {
                       <button
                         type="button"
                         onClick={() =>
-                          handleDeleteRoomType(roomType.id, roomType.name)
+                          setRoomTypeToDelete(roomType)
                         }
                         className="ml-3 text-sm font-medium text-red-600 hover:text-red-800"
                       >
@@ -389,6 +396,13 @@ export default function RoomTypes() {
           </div>
         </div>
       )}
+      <ConfirmDeleteModal
+        isOpen={roomTypeToDelete !== null}
+        itemName={roomTypeToDelete?.name ?? ""}
+        isDeleting={isDeleting}
+        onCancel={() => setRoomTypeToDelete(null)}
+        onConfirm={() => void handleDeleteRoomType()}
+      />
     </div>
   );
 }

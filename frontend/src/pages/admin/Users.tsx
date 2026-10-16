@@ -7,6 +7,7 @@ import {
 } from "../../services/user.service";
 import { ErrorState } from "../../components/ui/States";
 import { useAuth } from "../../context/useAuth";
+import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 
 type User = {
   id: string;
@@ -27,6 +28,7 @@ export default function Users() {
   const [actionError, setActionError] = useState("");
   const { user: currentUser } = useAuth();
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -70,20 +72,19 @@ export default function Users() {
     }
   };
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${name}? This action cannot be undone.`,
-    );
-
-    if (!confirmed) return;
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
 
     setActionError("");
-    setDeletingUserId(id);
+    setDeletingUserId(userToDelete.id);
 
     try {
-      await deleteUser(id);
+      await deleteUser(userToDelete.id);
 
-      setUsers((currentUsers) => currentUsers.filter((user) => user.id !== id));
+      setUsers((currentUsers) =>
+        currentUsers.filter((user) => user.id !== userToDelete.id),
+      );
+      setUserToDelete(null);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         setActionError(
@@ -211,10 +212,7 @@ export default function Users() {
                     <button
                       type="button"
                       onClick={() =>
-                        handleDeleteUser(
-                          user.id,
-                          `${user.firstName} ${user.lastName}`,
-                        )
+                        setUserToDelete(user)
                       }
                       disabled={
                         currentUser?.id === user.id ||
@@ -240,6 +238,17 @@ export default function Users() {
           </tbody>
         </table>
       </div>
+      <ConfirmDeleteModal
+        isOpen={userToDelete !== null}
+        itemName={
+          userToDelete
+            ? `${userToDelete.firstName} ${userToDelete.lastName}`
+            : ""
+        }
+        isDeleting={deletingUserId !== null}
+        onCancel={() => setUserToDelete(null)}
+        onConfirm={() => void handleDeleteUser()}
+      />
     </div>
   );
 }

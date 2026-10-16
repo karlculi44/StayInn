@@ -5,19 +5,8 @@ import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import { getRooms } from "../../services/room.service";
 import type { RoomListing } from "../../types";
 import { formatCurrency } from "../../utils/format";
+import { getRoomTypeImage } from "../../utils/room-image";
 import SectionTitle from "../SectionTitle";
-
-const roomImages: Record<string, string> = {
-  "Standard Room":
-    "https://images.unsplash.com/photo-1560185008-b033106af5c3?auto=format&fit=crop&w=1200&q=80",
-  "Deluxe Room":
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
-  "Family Room":
-    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80",
-  Studio:
-    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
-};
-const defaultRoomImage = roomImages["Standard Room"];
 
 export default function Rooms() {
   const [rooms, setRooms] = useState<RoomListing[]>([]);
@@ -105,10 +94,10 @@ export default function Rooms() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.map((room) => {
             const status = roomStatuses[room.status];
-            const image =
-              room.roomType.image ??
-              roomImages[room.roomType.name] ??
-              defaultRoomImage;
+            const image = getRoomTypeImage(
+              room.roomType.name,
+              room.roomType.image,
+            );
 
             return (
               <article

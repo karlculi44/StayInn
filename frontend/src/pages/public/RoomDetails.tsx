@@ -4,6 +4,7 @@ import { formatCurrency } from "../../utils/format";
 import { rooms } from "../shared";
 import { getRoom, getAvailableRooms } from "../../services/room.service";
 import { createReservation } from "../../services/reservation.service";
+import { getRoomTypeImage } from "../../utils/room-image";
 import axios from "axios";
 
 type Room = {
@@ -28,9 +29,6 @@ export default function RoomDetails() {
   const [availabilityError, setAvailabilityError] = useState("");
   const [room, setRoom] = useState<Room | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [fallbackImageRoomId, setFallbackImageRoomId] = useState<string | null>(
-    null,
-  );
   const [imageErrorRoomId, setImageErrorRoomId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [guests, setGuests] = useState(1);
@@ -149,11 +147,8 @@ export default function RoomDetails() {
 
   const nights = getNights();
   const total = nights * Number(room.roomType.pricePerNight);
-  const roomImage = room.roomType.image?.trim();
-  const isUsingFallbackImage = fallbackImageRoomId === room.id;
   const hasImageError = imageErrorRoomId === room.id;
-  const imageSource =
-    roomImage && !isUsingFallbackImage ? roomImage : staticRoom.image;
+  const imageSource = getRoomTypeImage(room.roomType.name, room.roomType.image);
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
@@ -176,13 +171,7 @@ export default function RoomDetails() {
               src={imageSource}
               alt={room.roomType.name}
               className="aspect-4/3 w-full rounded-3xl object-cover"
-              onError={() => {
-                if (roomImage && !isUsingFallbackImage) {
-                  setFallbackImageRoomId(room.id);
-                } else {
-                  setImageErrorRoomId(room.id);
-                }
-              }}
+              onError={() => setImageErrorRoomId(room.id)}
             />
           )}
         </div>

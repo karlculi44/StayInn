@@ -8,6 +8,7 @@ import {
 import type { Reservation } from "../../types/reservation";
 import ReservationStatus from "../../components/ui/ReservationStatus";
 import { formatCurrency } from "../../utils/format";
+import { getRoomTypeImage } from "../../utils/room-image";
 import axios from "axios";
 
 export default function ReservationDetails() {
@@ -107,7 +108,10 @@ export default function ReservationDetails() {
         (1000 * 60 * 60 * 24),
     ),
   );
-  const roomImage = reservation.room.roomType.image?.trim();
+  const roomImage = getRoomTypeImage(
+    reservation.room.roomType.name,
+    reservation.room.roomType.image,
+  );
   const showRoomImage = roomImage && failedImage !== roomImage;
 
   const canCancel =
