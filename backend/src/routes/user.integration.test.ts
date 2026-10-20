@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import request from "supertest";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import app from "../app.js";
 import { generateReservationReferenceId } from "../utils/reservationReference.js";
 
@@ -135,6 +136,97 @@ describe("User management integration tests", () => {
     });
 
     expect(updatedUser?.role).toBe("ADMIN");
+  });
+
+  it("allows an admin to create a user with a hashed password and safe response", async () => {
+    const password = "secure-create-password";
+    const response = await request(app)
+      .post("/api/users")
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        firstName: "Created",
+        lastName: "User",
+        email: `created-${randomUUID()}@example.com`,
+        password,
+        role: "GUEST",
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      firstName: "Created",
+      lastName: "User",
+      role: "GUEST",
+    });
+    expect(response.body).not.toHaveProperty("password");
+    expect(response.body).not.toHaveProperty("passwordHash");
+    createdUserIds.push(response.body.id);
+
+    const createdUser = await prisma.user.findUnique({
+      where: { id: response.body.id },
+    });
+
+    expect(createdUser).not.toBeNull();
+    expect(createdUser?.password).not.toBe(password);
+    expect(await bcrypt.compare(password, createdUser!.password)).toBe(true);
+  });
+
+  it("rejects creating a user with an already registered email", async () => {
+    const existingUser = await createTestUser();
+    const response = await request(app)
+      .post("/api/users")
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        firstName: "Another",
+        lastName: "User",
+        email: existingUser.email,
+        password: "secure-password",
+        role: "GUEST",
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe("Email unavailable");
+  });
+
+  it("rejects invalid create-user input", async () => {
+    const response = await request(app)
+      .post("/api/users")
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        firstName: "",
+        lastName: "User",
+        email: "invalid-email",
+        password: "short",
+        role: "SUPERADMIN",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Validation failed");
+  });
+
+  it("rejects user creation by non-admin users", async () => {
+    const guest = await createTestUser();
+    const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
+    if (!secret) {
+      throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
+    }
+    const guestToken = jwt.sign(
+      { userId: guest.id, role: "GUEST" },
+      secret,
+      { expiresIn: "5m" },
+    );
+
+    const response = await request(app)
+      .post("/api/users")
+      .set("Cookie", `accessToken=${guestToken}`)
+      .send({
+        firstName: "Blocked",
+        lastName: "User",
+        email: `blocked-${randomUUID()}@example.com`,
+        password: "secure-password",
+        role: "GUEST",
+      });
+
+    expect(response.status).toBe(403);
   });
 
   it("allows deletion of a user without reservations", async () => {

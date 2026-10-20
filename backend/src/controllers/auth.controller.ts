@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { env } from "../config/runtime.js";
 import { getAuthCookieOptions } from "../config/authCookieOptions.js";
+import { hashPassword } from "../utils/password.js";
 
 const authCookieOptions = getAuthCookieOptions(env.NODE_ENV);
 
@@ -22,7 +23,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Email unavailable", 409);
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await hashPassword(password);
 
   const user = await prisma.user.create({
     data: {
@@ -208,7 +209,7 @@ export const changePassword = asyncHandler(
       throw new AppError("Current password is incorrect", 401);
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await hashPassword(newPassword);
 
     await prisma.$transaction(async (tx) => {
       await tx.user.update({

@@ -9,6 +9,20 @@ describe("User routes authentication", () => {
     expect(response.status).toBe(401);
   });
 
+  it("rejects unauthenticated user creation", async () => {
+    const response = await request(app)
+      .post("/api/users")
+      .send({
+        firstName: "Unauthenticated",
+        lastName: "User",
+        email: "unauthenticated@example.com",
+        password: "secure-password",
+        role: "GUEST",
+      });
+
+    expect(response.status).toBe(401);
+  });
+
   it("rejects unauthenticated role updates", async () => {
     const response = await request(app)
       .patch("/api/users/test-user-id/role")

@@ -377,7 +377,10 @@ export default function Rooms() {
             }
           >
             <div className="flex items-start justify-between gap-4">
-              <h2 id={editingRoomId ? "room-form-title" : undefined} className="font-display text-2xl">
+              <h2
+                id={editingRoomId ? "room-form-title" : undefined}
+                className="font-display text-2xl"
+              >
                 {editingRoomId ? "Edit Room" : "Add Room"}
               </h2>
               {editingRoomId && (
@@ -440,94 +443,94 @@ export default function Rooms() {
               onSubmit={editingRoomId ? handleUpdateRoom : handleCreateRoom}
               className="mt-6 space-y-4"
             >
-            <div>
-              <label className="text-sm font-medium">Room Number</label>
-
-              <input
-                type="text"
-                value={roomNumber}
-                onChange={(event) => setRoomNumber(event.target.value)}
-                placeholder="e.g. 105"
-                className="mt-2 w-full rounded-xl border px-4 py-3"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Room Type</label>
-
-              <select
-                value={roomTypeId}
-                onChange={(event) => setRoomTypeId(event.target.value)}
-                className="mt-2 w-full rounded-xl border px-4 py-3"
-              >
-                <option value="">Select room type</option>
-
-                {roomTypes.map((roomType) => (
-                  <option key={roomType.id} value={roomType.id}>
-                    {roomType.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {editingRoomId && (
               <div>
-                <label className="text-sm font-medium">Status</label>
-
-                <select
-                  value={roomStatus}
-                  onChange={(event) =>
-                    setRoomStatus(event.target.value as RoomStatus)
-                  }
-                  className="mt-2 w-full rounded-xl border px-4 py-3"
-                >
-                  <option value="AVAILABLE">Available</option>
-                  <option value="MAINTENANCE">Maintenance</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
-            )}
-
-            {editingRoomId && roomStatus !== "AVAILABLE" && (
-              <div>
-                <label className="text-sm font-medium">Status Reason</label>
+                <label className="text-sm font-medium">Room Number</label>
 
                 <input
                   type="text"
-                  value={statusReason}
-                  onChange={(event) => setStatusReason(event.target.value)}
-                  placeholder="e.g. Scheduled maintenance"
+                  value={roomNumber}
+                  onChange={(event) => setRoomNumber(event.target.value)}
+                  placeholder="e.g. 105"
                   className="mt-2 w-full rounded-xl border px-4 py-3"
                 />
               </div>
-            )}
 
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
+              <div>
+                <label className="text-sm font-medium">Room Type</label>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={isCreating}
-                className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {isCreating
-                  ? editingRoomId
-                    ? "Saving..."
-                    : "Creating..."
-                  : editingRoomId
-                    ? "Save Changes"
-                    : "Create Room"}
-              </button>
+                <select
+                  value={roomTypeId}
+                  onChange={(event) => setRoomTypeId(event.target.value)}
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                >
+                  <option value="">Select room type</option>
 
-              <button
-                type="button"
-                onClick={closeForm}
-                disabled={isCreating}
-                className="rounded-full border px-5 py-3 text-sm font-semibold"
-              >
-                Cancel
-              </button>
-            </div>
+                  {roomTypes.map((roomType) => (
+                    <option key={roomType.id} value={roomType.id}>
+                      {roomType.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {editingRoomId && (
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+
+                  <select
+                    value={roomStatus}
+                    onChange={(event) =>
+                      setRoomStatus(event.target.value as RoomStatus)
+                    }
+                    className="mt-2 w-full rounded-xl border px-4 py-3"
+                  >
+                    <option value="AVAILABLE">Available</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="INACTIVE">Inactive</option>
+                  </select>
+                </div>
+              )}
+
+              {editingRoomId && roomStatus !== "AVAILABLE" && (
+                <div>
+                  <label className="text-sm font-medium">Status Reason</label>
+
+                  <input
+                    type="text"
+                    value={statusReason}
+                    onChange={(event) => setStatusReason(event.target.value)}
+                    placeholder="e.g. Scheduled maintenance"
+                    className="mt-2 w-full rounded-xl border px-4 py-3"
+                  />
+                </div>
+              )}
+
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {isCreating
+                    ? editingRoomId
+                      ? "Saving..."
+                      : "Creating..."
+                    : editingRoomId
+                      ? "Save Changes"
+                      : "Create Room"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={isCreating}
+                  className="rounded-full border px-5 py-3 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           </section>
         </div>
@@ -665,7 +668,7 @@ export default function Rooms() {
                     <div className="relative h-48 overflow-hidden rounded-t-2xl bg-cream">
                       <div
                         aria-hidden="true"
-                        className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-sage/15 via-cream to-sage/10 text-muted"
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-linear-to-br from-sage/15 via-cream to-sage/10 text-muted"
                       >
                         <svg
                           viewBox="0 0 24 24"
@@ -748,10 +751,10 @@ export default function Rooms() {
                         </span>
                         <span className="font-semibold text-ink">
                           ₱
-                          {Number(
-                            room.roomType.pricePerNight,
-                          ).toLocaleString()}{" "}
-                          <span className="font-normal text-muted">/ night</span>
+                          {Number(room.roomType.pricePerNight).toLocaleString()}{" "}
+                          <span className="font-normal text-muted">
+                            / night
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -801,7 +804,7 @@ export default function Rooms() {
             ref={actionsMenuRef}
             role="menu"
             aria-label={`Actions for room ${actionsMenu.room.roomNumber}`}
-            className="fixed z-[60] min-w-48 rounded-xl border border-black/10 bg-white p-1.5 shadow-xl"
+            className="fixed z-60 min-w-48 rounded-xl border border-black/10 bg-white p-1.5 shadow-xl"
             style={{ top: actionsMenu.top, left: actionsMenu.left }}
           >
             <button

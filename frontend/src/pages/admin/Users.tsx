@@ -1,34 +1,49 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import {
+  createUser,
   getUsers,
   updateUserRole,
   deleteUser,
+  type AdminUser,
 } from "../../services/user.service";
 import { ErrorState } from "../../components/ui/States";
 import { useAuth } from "../../context/useAuth";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 
-type User = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  createdAt: string;
-};
+type User = AdminUser;
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState("USER");
+  const [selectedRole, setSelectedRole] =
+    useState<AdminUser["role"]>("GUEST");
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createFirstName, setCreateFirstName] = useState("");
+  const [createLastName, setCreateLastName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [createRole, setCreateRole] = useState<AdminUser["role"]>("GUEST");
+  const [createError, setCreateError] = useState("");
   const { user: currentUser } = useAuth();
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
+  const closeCreateForm = () => {
+    setIsCreateOpen(false);
+    setCreateFirstName("");
+    setCreateLastName("");
+    setCreateEmail("");
+    setCreatePassword("");
+    setCreateRole("GUEST");
+    setCreateError("");
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -45,9 +60,86 @@ export default function Users() {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    if (!isCreateOpen) {
+      return;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isCreating) {
+        closeCreateForm();
+      }
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isCreateOpen, isCreating]);
+
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!createFirstName.trim() || !createLastName.trim()) {
+      setCreateError("First name and last name are required.");
+      return;
+    }
+
+    setIsCreating(true);
+    setCreateError("");
+    setActionError("");
+    setSuccessMessage("");
+
+    let createdUser: AdminUser;
+    try {
+      createdUser = await createUser({
+        firstName: createFirstName.trim(),
+        lastName: createLastName.trim(),
+        email: createEmail.trim(),
+        password: createPassword,
+        role: createRole,
+      });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        const responseData = error.response?.data as
+          | {
+              message?: string;
+              errors?: Record<string, string[] | undefined>;
+            }
+          | undefined;
+        const validationError = Object.values(
+          responseData?.errors ?? {},
+        ).flat()[0];
+        setCreateError(
+          validationError ??
+            responseData?.message ??
+            "Unable to create user.",
+        );
+      } else {
+        setCreateError("An unexpected error occurred.");
+      }
+      setIsCreating(false);
+      return;
+    }
+
+    closeCreateForm();
+    setSuccessMessage("User created successfully.");
+
+    try {
+      setUsers(await getUsers());
+    } catch {
+      setUsers((currentUsers) => [createdUser, ...currentUsers]);
+      setActionError("User was created, but the user list could not be refreshed.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleUpdateRole = async (id: string) => {
     setIsSaving(true);
     setActionError("");
+    setSuccessMessage("");
 
     try {
       const updatedUser = await updateUserRole(id, selectedRole);
@@ -76,6 +168,7 @@ export default function Users() {
     if (!userToDelete) return;
 
     setActionError("");
+    setSuccessMessage("");
     setDeletingUserId(userToDelete.id);
 
     try {
@@ -109,14 +202,39 @@ export default function Users() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Manage user accounts and roles.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage user accounts and roles.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setActionError("");
+              setSuccessMessage("");
+              setCreateError("");
+              setIsCreateOpen(true);
+            }}
+            className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+          >
+            Create User
+          </button>
+        </div>
       </div>
 
+      {successMessage && (
+        <p
+          role="status"
+          className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
+        >
+          {successMessage}
+        </p>
+      )}
+
       {actionError && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
           {actionError}
         </p>
       )}
@@ -147,7 +265,9 @@ export default function Users() {
                       <select
                         value={selectedRole}
                         onChange={(event) =>
-                          setSelectedRole(event.target.value)
+                          setSelectedRole(
+                            event.target.value as AdminUser["role"],
+                          )
                         }
                         className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                         disabled={isSaving}
@@ -238,6 +358,178 @@ export default function Users() {
           </tbody>
         </table>
       </div>
+      {isCreateOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isCreating) {
+              closeCreateForm();
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-user-title"
+            className="my-auto max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-7"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2
+                  id="create-user-title"
+                  className="text-xl font-bold text-gray-900"
+                >
+                  Create User
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Add a user account and assign its role.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close create user dialog"
+                onClick={closeCreateForm}
+                disabled={isCreating}
+                className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="mt-6 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="create-user-first-name"
+                    className="text-sm font-medium text-gray-800"
+                  >
+                    First name <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="create-user-first-name"
+                    type="text"
+                    autoComplete="given-name"
+                    required
+                    value={createFirstName}
+                    onChange={(event) =>
+                      setCreateFirstName(event.target.value)
+                    }
+                    placeholder="Alex"
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="create-user-last-name"
+                    className="text-sm font-medium text-gray-800"
+                  >
+                    Last name <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="create-user-last-name"
+                    type="text"
+                    autoComplete="family-name"
+                    required
+                    value={createLastName}
+                    onChange={(event) =>
+                      setCreateLastName(event.target.value)
+                    }
+                    placeholder="Morgan"
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="create-user-email"
+                  className="text-sm font-medium text-gray-800"
+                >
+                  Email address <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="create-user-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={createEmail}
+                  onChange={(event) => setCreateEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="create-user-password"
+                  className="text-sm font-medium text-gray-800"
+                >
+                  Password <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="create-user-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={8}
+                  value={createPassword}
+                  onChange={(event) => setCreatePassword(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Must be at least 8 characters.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="create-user-role"
+                  className="text-sm font-medium text-gray-800"
+                >
+                  Role <span className="text-red-600">*</span>
+                </label>
+                <select
+                  id="create-user-role"
+                  required
+                  value={createRole}
+                  onChange={(event) =>
+                    setCreateRole(event.target.value as AdminUser["role"])
+                  }
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
+                >
+                  <option value="GUEST">GUEST</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+              </div>
+
+              {createError && (
+                <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {createError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeCreateForm}
+                  disabled={isCreating}
+                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isCreating ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
       <ConfirmDeleteModal
         isOpen={userToDelete !== null}
         itemName={

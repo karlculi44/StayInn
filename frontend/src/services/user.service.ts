@@ -5,8 +5,19 @@ export type AdminUser = {
   firstName: string;
   lastName: string;
   email: string;
-  role: string;
+  role: "ADMIN" | "GUEST";
   createdAt: string;
+};
+
+export const createUser = async (data: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: AdminUser["role"];
+}): Promise<AdminUser> => {
+  const response = await api.post<AdminUser>("/users", data);
+  return response.data;
 };
 
 export const getUsers = async (): Promise<AdminUser[]> => {
@@ -19,7 +30,7 @@ export const getUser = async (id: string) => {
   return response.data;
 };
 
-export const updateUserRole = async (id: string, role: string) => {
+export const updateUserRole = async (id: string, role: AdminUser["role"]) => {
   const response = await api.patch(`/users/${id}/role`, { role });
   return response.data;
 };

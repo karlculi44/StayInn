@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  createUser,
   getUsers,
   getUserById,
   updateUserRole,
@@ -7,10 +8,20 @@ import {
 } from "../controllers/user.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
-import { updateUserRoleSchema } from "../schemas/user.schema.js";
+import {
+  createUserSchema,
+  updateUserRoleSchema,
+} from "../schemas/user.schema.js";
 
 const router = Router();
 
+router.post(
+  "/",
+  verifyToken,
+  authorize("ADMIN"),
+  validate(createUserSchema),
+  createUser,
+);
 router.get("/", verifyToken, authorize("ADMIN"), getUsers);
 router.get("/:id", verifyToken, authorize("ADMIN"), getUserById);
 router.patch(

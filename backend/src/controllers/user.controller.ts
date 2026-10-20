@@ -1,11 +1,12 @@
 import type { Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../lib/prisma.js";
 import { getStringParam } from "../utils/getParam.js";
 import { AppError } from "../utils/AppError.js";
+import { hashPassword } from "../utils/password.js";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
- 
   const users = await prisma.user.findMany({
     select: {
       id: true,
@@ -21,6 +22,52 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.json(users);
+});
+
+export const createUser = asyncHandler(async (req: Request, res: Response) => {
+  const { firstName, lastName, email, password, role } = req.body;
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (existingUser) {
+    throw new AppError("Email unavailable", 409);
+  }
+
+  const hashedPassword = await hashPassword(password);
+
+  try {
+    const user = await prisma.user.create({
+      data: {
+        firstName,
+        lastName,
+        email,
+        password: hashedPassword,
+        role,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(201).json(user);
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new AppError("Email unavailable", 409);
+    }
+
+    throw error;
+  }
 });
 
 export const getUserById = asyncHandler(async (req: Request, res: Response) => {
