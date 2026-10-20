@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   createRoom,
   deleteRoom,
@@ -9,17 +10,8 @@ import {
 import { getRoomTypes } from "../../services/room-type.service";
 import { ErrorState } from "../../components/ui/States";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
-
-type Room = {
-  id: string;
-  roomNumber: string;
-  status: RoomStatus;
-  roomType: {
-    name: string;
-    capacity: number;
-    pricePerNight: string;
-  };
-};
+import type { RoomListing } from "../../types";
+import { getRoomTypeImage } from "../../utils/room-image";
 
 type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "INACTIVE";
 
@@ -28,11 +20,27 @@ type RoomType = {
   name: string;
 };
 
+type RoomActionsMenu = {
+  room: RoomListing;
+  top: number;
+  left: number;
+};
+
+const roomStatusStyles: Record<RoomStatus, string> = {
+  AVAILABLE: "bg-green-100 text-green-700",
+  MAINTENANCE: "bg-yellow-100 text-yellow-800",
+  INACTIVE: "bg-gray-100 text-gray-700",
+};
+
 export default function Rooms() {
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<RoomListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+  const [capacityFilter, setCapacityFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | RoomStatus>("ALL");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [roomNumber, setRoomNumber] = useState("");
   const [roomTypeId, setRoomTypeId] = useState("");
@@ -41,8 +49,12 @@ export default function Rooms() {
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState("");
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
-  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<RoomListing | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [actionsMenu, setActionsMenu] = useState<RoomActionsMenu | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+  const actionsMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const firstMenuActionRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -71,6 +83,151 @@ export default function Rooms() {
 
     fetchRoomTypes();
   }, []);
+
+  useEffect(() => {
+    if (!actionsMenu) {
+      return;
+    }
+
+    firstMenuActionRef.current?.focus();
+
+    const closeMenuOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        !actionsMenuRef.current?.contains(target) &&
+        !actionsMenuButtonRef.current?.contains(target)
+      ) {
+        setActionsMenu(null);
+        actionsMenuButtonRef.current = null;
+      }
+    };
+
+    const closeMenuOnKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActionsMenu(null);
+        actionsMenuButtonRef.current?.focus();
+        actionsMenuButtonRef.current = null;
+      }
+    };
+
+    const closeMenuOnViewportChange = () => {
+      setActionsMenu(null);
+      actionsMenuButtonRef.current = null;
+    };
+
+    document.addEventListener("pointerdown", closeMenuOnOutsideClick);
+    document.addEventListener("keydown", closeMenuOnKeyDown);
+    window.addEventListener("scroll", closeMenuOnViewportChange, true);
+    window.addEventListener("resize", closeMenuOnViewportChange);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeMenuOnOutsideClick);
+      document.removeEventListener("keydown", closeMenuOnKeyDown);
+      window.removeEventListener("scroll", closeMenuOnViewportChange, true);
+      window.removeEventListener("resize", closeMenuOnViewportChange);
+    };
+  }, [actionsMenu]);
+
+  const filteredRooms = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return rooms.filter((room) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        room.roomNumber.toLowerCase().includes(normalizedSearch);
+      const matchesRoomType =
+        roomTypeFilter === "ALL" || room.roomType.id === roomTypeFilter;
+      const matchesCapacity =
+        capacityFilter === "ALL" ||
+        room.roomType.capacity === Number(capacityFilter);
+      const matchesStatus =
+        statusFilter === "ALL" || room.status === statusFilter;
+
+      return (
+        matchesSearch && matchesRoomType && matchesCapacity && matchesStatus
+      );
+    });
+  }, [rooms, searchTerm, roomTypeFilter, capacityFilter, statusFilter]);
+
+  const capacityOptions = useMemo(
+    () =>
+      [...new Set(rooms.map((room) => room.roomType.capacity))].sort(
+        (first, second) => first - second,
+      ),
+    [rooms],
+  );
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setRoomTypeFilter("ALL");
+    setCapacityFilter("ALL");
+    setStatusFilter("ALL");
+  };
+
+  const openActionsMenu = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    room: RoomListing,
+  ) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 192;
+    const menuHeight = 96;
+    const left = Math.max(
+      8,
+      Math.min(bounds.right - menuWidth, window.innerWidth - menuWidth - 8),
+    );
+    const top =
+      bounds.bottom + menuHeight + 8 <= window.innerHeight
+        ? bounds.bottom + 4
+        : Math.max(8, bounds.top - menuHeight - 4);
+
+    actionsMenuButtonRef.current = event.currentTarget;
+    setActionsMenu({ room, top, left });
+  };
+
+  const closeActionsMenu = () => {
+    setActionsMenu(null);
+    actionsMenuButtonRef.current = null;
+  };
+
+  const openEditForm = (room: RoomListing) => {
+    closeActionsMenu();
+    setEditingRoomId(room.id);
+    setRoomNumber(room.roomNumber);
+    setRoomTypeId(room.roomType.id);
+    setRoomStatus(room.status);
+    setStatusReason("");
+    setFormError("");
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditingRoomId(null);
+    setRoomNumber("");
+    setRoomTypeId("");
+    setRoomStatus("AVAILABLE");
+    setStatusReason("");
+    setFormError("");
+  };
+
+  useEffect(() => {
+    if (!isFormOpen || !editingRoomId) {
+      return;
+    }
+
+    const closeEditModalOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isCreating) {
+        closeForm();
+      }
+    };
+
+    document.addEventListener("keydown", closeEditModalOnEscape);
+
+    return () => {
+      document.removeEventListener("keydown", closeEditModalOnEscape);
+    };
+  }, [isFormOpen, editingRoomId, isCreating]);
 
   const handleCreateRoom = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -168,6 +325,8 @@ export default function Rooms() {
     }
   };
 
+  const editingRoom = rooms.find((room) => room.id === editingRoomId);
+
   return (
     <div>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
@@ -190,15 +349,97 @@ export default function Rooms() {
       </div>
 
       {isFormOpen && (
-        <div className="mt-8 rounded-2xl bg-white p-6">
-          <h2 className="font-display text-2xl">
-            {editingRoomId ? "Edit Room" : "Add Room"}
-          </h2>
-
-          <form
-            onSubmit={editingRoomId ? handleUpdateRoom : handleCreateRoom}
-            className="mt-6 space-y-4"
+        <div
+          className={
+            editingRoomId
+              ? "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
+              : "mt-8 rounded-2xl bg-white p-6"
+          }
+          role={editingRoomId ? "presentation" : undefined}
+          onMouseDown={(event) => {
+            if (
+              editingRoomId &&
+              event.target === event.currentTarget &&
+              !isCreating
+            ) {
+              closeForm();
+            }
+          }}
+        >
+          <section
+            role={editingRoomId ? "dialog" : undefined}
+            aria-modal={editingRoomId ? true : undefined}
+            aria-labelledby={editingRoomId ? "room-form-title" : undefined}
+            className={
+              editingRoomId
+                ? "my-auto max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-cream p-5 shadow-xl sm:p-7"
+                : ""
+            }
           >
+            <div className="flex items-start justify-between gap-4">
+              <h2 id={editingRoomId ? "room-form-title" : undefined} className="font-display text-2xl">
+                {editingRoomId ? "Edit Room" : "Add Room"}
+              </h2>
+              {editingRoomId && (
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={isCreating}
+                  aria-label="Close edit room dialog"
+                  className="rounded-lg px-3 py-2 text-muted hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+
+            {editingRoom && (
+              <div className="mt-5 grid gap-4 rounded-2xl bg-white p-4 sm:grid-cols-[10rem_1fr] sm:items-center">
+                <img
+                  src={getRoomTypeImage(
+                    editingRoom.roomType.name,
+                    editingRoom.roomType.image,
+                  )}
+                  alt={`Room ${editingRoom.roomNumber} - ${editingRoom.roomType.name}`}
+                  className="h-36 w-full rounded-xl bg-cream object-cover sm:h-28"
+                />
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <dt className="text-muted">Room</dt>
+                    <dd className="mt-0.5 font-semibold text-ink">
+                      {editingRoom.roomNumber}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Room Type</dt>
+                    <dd className="mt-0.5 font-semibold text-ink">
+                      {editingRoom.roomType.name}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Maximum Capacity</dt>
+                    <dd className="mt-0.5 font-semibold text-ink">
+                      {editingRoom.roomType.capacity}{" "}
+                      {editingRoom.roomType.capacity === 1 ? "guest" : "guests"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Price per Night</dt>
+                    <dd className="mt-0.5 font-semibold text-ink">
+                      ₱
+                      {Number(
+                        editingRoom.roomType.pricePerNight,
+                      ).toLocaleString()}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <form
+              onSubmit={editingRoomId ? handleUpdateRoom : handleCreateRoom}
+              className="mt-6 space-y-4"
+            >
             <div>
               <label className="text-sm font-medium">Room Number</label>
 
@@ -263,7 +504,7 @@ export default function Rooms() {
 
             {formError && <p className="text-sm text-red-600">{formError}</p>}
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
                 disabled={isCreating}
@@ -280,21 +521,15 @@ export default function Rooms() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setIsFormOpen(false);
-                  setEditingRoomId(null);
-                  setRoomNumber("");
-                  setRoomTypeId("");
-                  setRoomStatus("AVAILABLE");
-                  setStatusReason("");
-                  setFormError("");
-                }}
+                onClick={closeForm}
+                disabled={isCreating}
                 className="rounded-full border px-5 py-3 text-sm font-semibold"
               >
                 Cancel
               </button>
             </div>
-          </form>
+            </form>
+          </section>
         </div>
       )}
 
@@ -307,74 +542,293 @@ export default function Rooms() {
       )}
 
       {!isLoading && !error && (
-        <div className="mt-8 overflow-hidden rounded-2xl bg-white">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-6 py-4">Room</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Capacity</th>
-                  <th className="px-6 py-4">Price</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Actions</th>
-                </tr>
-              </thead>
+        <section className="mt-8">
+          <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="sm:col-span-2 xl:col-span-1">
+                <label
+                  htmlFor="room-search"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted"
+                >
+                  Search room number
+                </label>
+                <input
+                  id="room-search"
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="e.g. 105"
+                  className="w-full rounded-xl border px-4 py-3 text-sm"
+                />
+              </div>
 
-              <tbody>
-                {rooms.map((room) => (
-                  <tr key={room.id} className="border-b last:border-b-0">
-                    <td className="px-6 py-4 font-semibold">
-                      {room.roomNumber}
-                    </td>
+              <div>
+                <label
+                  htmlFor="room-type-filter"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted"
+                >
+                  Room Type
+                </label>
+                <select
+                  id="room-type-filter"
+                  value={roomTypeFilter}
+                  onChange={(event) => setRoomTypeFilter(event.target.value)}
+                  className="w-full rounded-xl border px-4 py-3 text-sm"
+                >
+                  <option value="ALL">All Types</option>
+                  {roomTypes.map((roomType) => (
+                    <option key={roomType.id} value={roomType.id}>
+                      {roomType.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                    <td className="px-6 py-4">{room.roomType.name}</td>
+              <div>
+                <label
+                  htmlFor="room-capacity-filter"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted"
+                >
+                  Capacity
+                </label>
+                <select
+                  id="room-capacity-filter"
+                  value={capacityFilter}
+                  onChange={(event) => setCapacityFilter(event.target.value)}
+                  className="w-full rounded-xl border px-4 py-3 text-sm"
+                >
+                  <option value="ALL">All Capacities</option>
+                  {capacityOptions.map((capacity) => (
+                    <option key={capacity} value={capacity}>
+                      {capacity} {capacity === 1 ? "guest" : "guests"}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                    <td className="px-6 py-4">{room.roomType.capacity}</td>
+              <div>
+                <label
+                  htmlFor="room-status-filter"
+                  className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted"
+                >
+                  Status
+                </label>
+                <select
+                  id="room-status-filter"
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value as "ALL" | RoomStatus)
+                  }
+                  className="w-full rounded-xl border px-4 py-3 text-sm"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="AVAILABLE">AVAILABLE</option>
+                  <option value="MAINTENANCE">MAINTENANCE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+            </div>
 
-                    <td className="px-6 py-4">
-                      ₱{Number(room.roomType.pricePerNight).toLocaleString()}
-                    </td>
-
-                    <td className="px-6 py-4">{room.status}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-4">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingRoomId(room.id);
-                            setRoomNumber(room.roomNumber);
-                            setRoomTypeId(
-                              roomTypes.find(
-                                (type) => type.name === room.roomType.name,
-                              )?.id ?? "",
-                            );
-                            setRoomStatus(room.status);
-                            setStatusReason("");
-                            setFormError("");
-                            setIsFormOpen(true);
-                          }}
-                          className="text-sm font-semibold underline"
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setRoomToDelete(room)}
-                          className="text-sm font-semibold text-red-600 underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+              <p className="text-sm text-muted" aria-live="polite">
+                Showing{" "}
+                <span className="font-semibold text-ink">
+                  {filteredRooms.length}
+                </span>{" "}
+                {filteredRooms.length === 1 ? "room" : "rooms"}
+              </p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-sm font-semibold text-sage underline underline-offset-2 hover:text-ink"
+              >
+                Clear filters
+              </button>
+            </div>
           </div>
-        </div>
+
+          {filteredRooms.length > 0 ? (
+            <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredRooms.map((room) => {
+                const image = getRoomTypeImage(
+                  room.roomType.name,
+                  room.roomType.image,
+                );
+
+                return (
+                  <article
+                    key={room.id}
+                    className={`relative rounded-2xl border border-black/5 bg-white shadow-sm transition-shadow hover:shadow-md ${
+                      actionsMenu?.room.id === room.id ? "z-20" : ""
+                    }`}
+                  >
+                    <div className="relative h-48 overflow-hidden rounded-t-2xl bg-cream">
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-sage/15 via-cream to-sage/10 text-muted"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          className="size-9"
+                        >
+                          <path d="M3 18v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5M3 15h18M5 11V7a2 2 0 0 1 2-2h4v6M21 18v2M3 18v2" />
+                        </svg>
+                        <span className="text-xs font-medium">
+                          Room image unavailable
+                        </span>
+                      </div>
+                      <img
+                        src={image}
+                        alt={`Room ${room.roomNumber} - ${room.roomType.name}`}
+                        className="relative z-10 size-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        aria-label={`Actions for room ${room.roomNumber}`}
+                        aria-haspopup="menu"
+                        aria-expanded={actionsMenu?.room.id === room.id}
+                        aria-controls={
+                          actionsMenu?.room.id === room.id
+                            ? "room-actions-menu"
+                            : undefined
+                        }
+                        onClick={(event) => {
+                          if (actionsMenu?.room.id === room.id) {
+                            closeActionsMenu();
+                            return;
+                          }
+                          openActionsMenu(event, room);
+                        }}
+                        className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-ink shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="size-5"
+                        >
+                          <circle cx="5" cy="12" r="1.8" />
+                          <circle cx="12" cy="12" r="1.8" />
+                          <circle cx="19" cy="12" r="1.8" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 className="truncate font-display text-2xl">
+                            Room {room.roomNumber}
+                          </h2>
+                          <p className="mt-1 truncate text-sm text-muted">
+                            {room.roomType.name}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-3 py-1 text-[0.65rem] font-bold tracking-wide ${roomStatusStyles[room.status]}`}
+                        >
+                          {room.status}
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 text-sm">
+                        <span className="text-muted">
+                          Up to{" "}
+                          <span className="font-semibold text-ink">
+                            {room.roomType.capacity}
+                          </span>{" "}
+                          {room.roomType.capacity === 1 ? "guest" : "guests"}
+                        </span>
+                        <span className="font-semibold text-ink">
+                          ₱
+                          {Number(
+                            room.roomType.pricePerNight,
+                          ).toLocaleString()}{" "}
+                          <span className="font-normal text-muted">/ night</span>
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+              <h2 className="font-display text-2xl">
+                {rooms.length === 0 ? "No rooms yet" : "No rooms match"}
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                {rooms.length === 0
+                  ? "Add a room to start managing your rooms."
+                  : "Try adjusting your search or filters."}
+              </p>
+              {rooms.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormError("");
+                    setIsFormOpen(true);
+                  }}
+                  className="mt-5 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white"
+                >
+                  Add Room
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-5 text-sm font-semibold text-sage underline underline-offset-2"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </section>
       )}
+
+      {actionsMenu &&
+        createPortal(
+          <div
+            id="room-actions-menu"
+            ref={actionsMenuRef}
+            role="menu"
+            aria-label={`Actions for room ${actionsMenu.room.roomNumber}`}
+            className="fixed z-[60] min-w-48 rounded-xl border border-black/10 bg-white p-1.5 shadow-xl"
+            style={{ top: actionsMenu.top, left: actionsMenu.left }}
+          >
+            <button
+              ref={firstMenuActionRef}
+              type="button"
+              role="menuitem"
+              onClick={() => openEditForm(actionsMenu.room)}
+              className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-cream focus-visible:bg-cream focus-visible:outline-none"
+            >
+              Edit Room
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                const room = actionsMenu.room;
+                closeActionsMenu();
+                setRoomToDelete(room);
+              }}
+              className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:bg-red-50 focus-visible:outline-none"
+            >
+              Delete Room
+            </button>
+          </div>,
+          document.body,
+        )}
+
       <ConfirmDeleteModal
         isOpen={roomToDelete !== null}
         itemName={roomToDelete ? `Room ${roomToDelete.roomNumber}` : ""}

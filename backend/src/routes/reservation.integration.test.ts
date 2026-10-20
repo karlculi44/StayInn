@@ -513,8 +513,9 @@ describe("Reservation booking integration tests", () => {
       .set("Cookie", `accessToken=${accessToken}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.some((room: { id: string }) => room.id === testRoomId))
-      .toBe(true);
+    expect(
+      response.body.some((room: { id: string }) => room.id === testRoomId),
+    ).toBe(true);
   });
 
   it("allows only one of two simultaneous overlapping bookings", async () => {
