@@ -4,6 +4,7 @@ import { useAuth } from "../context/useAuth";
 const items = [
   { label: "Overview", to: "/admin" },
   { label: "Rooms", to: "/admin/rooms" },
+  { label: "Room status history", to: "/admin/room-status-history" },
   { label: "Room types", to: "/admin/room-types" },
   { label: "Reservations", to: "/admin/reservations" },
   { label: "Users", to: "/admin/users" },

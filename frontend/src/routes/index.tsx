@@ -17,6 +17,7 @@ import AdminRooms from "../pages/admin/Rooms";
 import RoomTypes from "../pages/admin/RoomTypes";
 import AdminReservations from "../pages/admin/Reservations";
 import Users from "../pages/admin/Users";
+import RoomStatusHistory from "../pages/admin/RoomStatusHistory";
 
 export default function AppRoutes() {
   return (
@@ -40,6 +41,10 @@ export default function AppRoutes() {
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/rooms" element={<AdminRooms />} />
+          <Route
+            path="/admin/room-status-history"
+            element={<RoomStatusHistory />}
+          />
           <Route path="/admin/room-types" element={<RoomTypes />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/users" element={<Users />} />

@@ -197,4 +197,38 @@ describe("Room status integration tests", () => {
 
     expect(historyCountAfter).toBe(historyCountBefore);
   });
+
+  it("lets an admin list room status history, newest first", async () => {
+    const response = await request(app)
+      .get("/api/admin/room-status-history")
+      .set("Cookie", `accessToken=${adminToken}`);
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+
+    const entry = response.body.find(
+      (item: { room: { id: string } | null }) => item.room?.id === roomId,
+    );
+
+    expect(entry.admin.id).toBe(adminId);
+    expect(entry.admin).not.toHaveProperty("email");
+    expect(entry.reason).toBeTruthy();
+
+    const dates: number[] = response.body.map((item: { createdAt: string }) =>
+      new Date(item.createdAt).getTime(),
+    );
+    expect(dates).toEqual([...dates].sort((a, b) => b - a));
+  });
+
+  it("rejects guests and unauthenticated users from room status history", async () => {
+    const guestResponse = await request(app)
+      .get("/api/admin/room-status-history")
+      .set("Cookie", `accessToken=${guestToken}`);
+    const anonymousResponse = await request(app).get(
+      "/api/admin/room-status-history",
+    );
+
+    expect(guestResponse.status).toBe(403);
+    expect(anonymousResponse.status).toBe(401);
+  });
 });

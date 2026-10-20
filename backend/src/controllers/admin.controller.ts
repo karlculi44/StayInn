@@ -2,6 +2,38 @@ import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../lib/prisma.js";
 
+export const getRoomStatusHistory = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const history = await prisma.roomStatusHistory.findMany({
+      select: {
+        id: true,
+        previousStatus: true,
+        newStatus: true,
+        reason: true,
+        createdAt: true,
+        room: {
+          select: {
+            id: true,
+            roomNumber: true,
+          },
+        },
+        admin: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json(history);
+  },
+);
+
 export const getDashboardStats = asyncHandler(
   async (req: Request, res: Response) => {
     const [
