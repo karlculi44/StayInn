@@ -1051,6 +1051,7 @@ export default function Reservations() {
                   <table className="w-full min-w-262.5 text-left text-sm">
                     <thead>
                       <tr className="border-b">
+                        <th className="px-6 py-4">No.</th>
                         <th className="px-6 py-4">Reference ID</th>
                         <th className="px-6 py-4">Guest</th>
                         <th className="px-6 py-4">Room</th>
@@ -1063,7 +1064,7 @@ export default function Reservations() {
                     </thead>
 
                     <tbody>
-                      {paginatedReservations.map((reservation) => {
+                      {paginatedReservations.map((reservation, index) => {
                         const isUpdating =
                           updatingReservationId === reservation.id;
                         const availableTransitions =
@@ -1074,6 +1075,10 @@ export default function Reservations() {
                             key={reservation.id}
                             className="border-b last:border-b-0"
                           >
+                            <td className="whitespace-nowrap px-6 py-4">
+                              {(pageToDisplay - 1) * pageSize + index + 1}
+                            </td>
+
                             <td className="whitespace-nowrap px-6 py-4 font-semibold">
                               {reservation.referenceId}
                             </td>
