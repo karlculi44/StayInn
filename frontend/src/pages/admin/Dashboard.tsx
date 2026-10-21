@@ -350,7 +350,7 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                         <CartesianGrid
                           strokeDasharray="3 3"
                           vertical={false}
-                          stroke="#E5E7EB"
+                          stroke="var(--app-chart-grid)"
                         />
                         <XAxis
                           dataKey="month"
@@ -359,14 +359,14 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                           textAnchor="end"
                           interval={0}
                           height={56}
-                          tick={{ fill: "#667085", fontSize: 11 }}
-                          axisLine={{ stroke: "#D0D5DD" }}
+                          tick={{ fill: "var(--app-chart-muted)", fontSize: 11 }}
+                          axisLine={{ stroke: "var(--app-chart-grid)" }}
                           tickLine={false}
                         />
                         <YAxis
                           allowDecimals={false}
                           width={36}
-                          tick={{ fill: "#667085", fontSize: 12 }}
+                          tick={{ fill: "var(--app-chart-muted)", fontSize: 12 }}
                           axisLine={false}
                           tickLine={false}
                         />
@@ -380,15 +380,20 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                           ]}
                           contentStyle={{
                             borderRadius: 8,
-                            borderColor: "#DDE8E1",
+                            borderColor: "var(--app-border)",
+                            backgroundColor: "var(--app-surface)",
                             boxShadow: "0 4px 12px rgb(0 0 0 / 0.1)",
                           }}
-                          labelStyle={{ color: "#17211B", fontWeight: 600 }}
+                          labelStyle={{
+                            color: "var(--app-ink)",
+                            fontWeight: 600,
+                          }}
+                          itemStyle={{ color: "var(--app-muted)" }}
                         />
                         <Bar
                           dataKey="reservationCount"
                           name="Reservations"
-                          fill="#547A67"
+                          fill="var(--app-chart-bar)"
                           radius={[5, 5, 0, 0]}
                           maxBarSize={36}
                         />

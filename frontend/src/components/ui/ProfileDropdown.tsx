@@ -85,7 +85,7 @@ export default function ProfileDropdown() {
         <div
           id="profile-dropdown-menu"
           aria-label="Profile options"
-          className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-black/10 bg-white p-1.5 shadow-lg"
+          className="animate-ui-enter absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-black/10 bg-white p-1.5 shadow-lg"
         >
           <Link
             to={profilePath}

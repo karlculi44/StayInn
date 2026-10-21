@@ -1,17 +1,74 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light;
+  --app-page: #f7f6f1;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f3f2ec;
+  --app-ink: #17211f;
+  --app-muted: #65716d;
+  --app-border: rgb(23 33 31 / 10%);
+  --app-sage: #446c5c;
+  --app-sage-dark: #2f5144;
+  --app-sage-surface: #446c5c;
+  --app-sage-surface-dark: #2f5144;
+  --app-gold: #c69b5c;
+  --app-input: #ffffff;
+  --app-chart-grid: #e5e7eb;
+  --app-chart-muted: #667085;
+  --app-chart-bar: #547a67;
+  --app-status-warning-bg: #fef3c7;
+  --app-status-warning-text: #a16207;
+  --app-status-success-bg: #dcfce7;
+  --app-status-success-text: #15803d;
+  --app-status-danger-bg: #fee2e2;
+  --app-status-danger-text: #b91c1c;
+  --app-status-info-bg: #dbeafe;
+  --app-status-info-text: #1d4ed8;
+  --app-status-neutral-bg: #f3f4f6;
+  --app-status-neutral-text: #4b5563;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-page: #151d1a;
+  --app-surface: #1e2925;
+  --app-surface-muted: #26332e;
+  --app-ink: #edf2ee;
+  --app-muted: #a7b5ad;
+  --app-border: rgb(225 238 229 / 13%);
+  --app-sage: #89b49d;
+  --app-sage-dark: #a9cbb7;
+  --app-sage-surface: #315a47;
+  --app-sage-surface-dark: #294b3b;
+  --app-gold: #d8b675;
+  --app-input: #1a2521;
+  --app-chart-grid: #3a4942;
+  --app-chart-muted: #aab7b0;
+  --app-chart-bar: #89b49d;
+  --app-status-warning-bg: #473818;
+  --app-status-warning-text: #f4d286;
+  --app-status-success-bg: #1e4032;
+  --app-status-success-text: #a8d5ba;
+  --app-status-danger-bg: #482a2a;
+  --app-status-danger-text: #f0aaaa;
+  --app-status-info-bg: #1d354b;
+  --app-status-info-text: #a9c9e4;
+  --app-status-neutral-bg: #303b36;
+  --app-status-neutral-text: #c5d0ca;
+}
+
 @theme {
-  --color-ink: #17211f;
-  --color-muted: #65716d;
-  --color-cream: #f7f6f1;
-  --color-sage: #446c5c;
-  --color-sage-dark: #2f5144;
-  --color-gold: #c69b5c;
+  --color-ink: var(--app-ink);
+  --color-muted: var(--app-muted);
+  --color-cream: var(--app-page);
+  --color-sage: var(--app-sage);
+  --color-sage-dark: var(--app-sage-dark);
+  --color-gold: var(--app-gold);
   --font-sans: "Inter", "Segoe UI", sans-serif;
   --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
 }
 
-/* Opacity-only fade so the tooltip never animates its position. */
 @keyframes chart-tooltip-fade-in {
   from {
     opacity: 0;
@@ -21,25 +78,36 @@
   }
 }
 
+@keyframes ui-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .chart-tooltip-fade {
   animation: chart-tooltip-fade-in 120ms ease-out;
   transition: opacity 120ms ease-out;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .chart-tooltip-fade {
-    animation: none;
-    transition: none;
-  }
+.animate-ui-enter {
+  animation: ui-enter 160ms ease-out both;
 }
 
 @layer base {
   body {
-    background-color: var(--color-cream);
-    color: var(--color-ink);
+    background-color: var(--app-page);
+    color: var(--app-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition:
+      background-color 160ms ease-out,
+      color 160ms ease-out;
   }
 
   button,
@@ -54,8 +122,221 @@
   }
 
   button,
-  a {
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-duration: 200ms;
+  a,
+  select,
+  input,
+  textarea {
+    transition-property:
+      color, background-color, border-color, text-decoration-color, fill, stroke,
+      box-shadow, transform;
+    transition-duration: 160ms;
+    transition-timing-function: ease-out;
+  }
+
+  input,
+  select,
+  textarea {
+    color: var(--app-ink);
+    background-color: var(--app-input);
+    border-color: var(--app-border);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--app-muted);
+    opacity: 0.75;
+  }
+
+  option {
+    color: var(--app-ink);
+    background-color: var(--app-surface);
+  }
+
+  :focus-visible {
+    outline-color: var(--app-sage);
+  }
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--app-surface);
+}
+
+[data-theme="dark"] .bg-sage {
+  background-color: var(--app-sage-surface);
+}
+
+[data-theme="dark"] .bg-sage-dark {
+  background-color: var(--app-sage-surface-dark);
+}
+
+[data-theme="dark"] .hover\:bg-sage:hover {
+  background-color: var(--app-sage-surface);
+}
+
+[data-theme="dark"] .hover\:bg-sage-dark:hover {
+  background-color: var(--app-sage-surface-dark);
+}
+
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] .bg-gray-200 {
+  background-color: var(--app-surface-muted);
+}
+
+[data-theme="dark"] .bg-black\/5,
+[data-theme="dark"] .bg-black\/10 {
+  background-color: var(--app-surface-muted);
+}
+
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-700 {
+  color: var(--app-ink);
+}
+
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400 {
+  color: var(--app-muted);
+}
+
+[data-theme="dark"] .border-black\/5,
+[data-theme="dark"] .border-black\/10,
+[data-theme="dark"] .border-black\/20,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 {
+  border-color: var(--app-border);
+}
+
+[data-theme="dark"] .bg-yellow-100 {
+  background-color: var(--app-status-warning-bg);
+}
+
+[data-theme="dark"] .text-yellow-700,
+[data-theme="dark"] .text-yellow-800 {
+  color: var(--app-status-warning-text);
+}
+
+[data-theme="dark"] .bg-green-100 {
+  background-color: var(--app-status-success-bg);
+}
+
+[data-theme="dark"] .bg-green-50 {
+  background-color: color-mix(in srgb, var(--app-status-success-bg) 55%, var(--app-surface));
+}
+
+[data-theme="dark"] .text-green-700 {
+  color: var(--app-status-success-text);
+}
+
+[data-theme="dark"] .bg-amber-100 {
+  background-color: var(--app-status-warning-bg);
+}
+
+[data-theme="dark"] .text-amber-800 {
+  color: var(--app-status-warning-text);
+}
+
+[data-theme="dark"] .border-amber-200 {
+  border-color: color-mix(in srgb, var(--app-status-warning-text) 30%, transparent);
+}
+
+[data-theme="dark"] .bg-red-50,
+[data-theme="dark"] .bg-red-100 {
+  background-color: var(--app-status-danger-bg);
+}
+
+[data-theme="dark"] .text-red-600,
+[data-theme="dark"] .text-red-700,
+[data-theme="dark"] .text-red-800 {
+  color: var(--app-status-danger-text);
+}
+
+[data-theme="dark"] .border-red-200,
+[data-theme="dark"] .border-red-300 {
+  border-color: color-mix(in srgb, var(--app-status-danger-text) 30%, transparent);
+}
+
+[data-theme="dark"] .bg-blue-100 {
+  background-color: var(--app-status-info-bg);
+}
+
+[data-theme="dark"] .text-blue-700 {
+  color: var(--app-status-info-text);
+}
+
+[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--app-status-neutral-bg);
+}
+
+[data-theme="dark"] .text-gray-700 {
+  color: var(--app-status-neutral-text);
+}
+
+[data-theme="dark"] .admin-raised-light {
+  border-color: var(--app-border);
+  background: linear-gradient(180deg, #33413a, #26332e);
+  color: var(--app-ink);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 22%), 0 5px 10px rgb(0 0 0 / 12%);
+}
+
+[data-theme="dark"] .admin-raised-light:hover {
+  background: linear-gradient(180deg, #3b4c43, #2c3933);
+}
+
+[data-theme="dark"] .admin-raised-dark {
+  border-color: var(--app-border);
+  background: linear-gradient(180deg, #3b6954, #315a47);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 22%), 0 5px 10px rgb(0 0 0 / 12%);
+}
+
+[data-theme="dark"] .admin-raised-dark:hover {
+  background: linear-gradient(180deg, #46775f, #39664f);
+}
+
+[data-theme="dark"] .stayinn-calendar {
+  --fc-page-bg-color: var(--app-surface);
+  --fc-neutral-bg-color: var(--app-surface-muted);
+  --fc-border-color: var(--app-border);
+  --fc-today-bg-color: rgb(137 180 157 / 10%);
+  color: var(--app-ink);
+}
+
+[data-theme="dark"] .stayinn-calendar .fc-col-header-cell-cushion,
+[data-theme="dark"] .stayinn-calendar .fc-daygrid-day-number {
+  color: var(--app-ink);
+}
+
+[data-theme="dark"] .stayinn-calendar .fc-button-primary {
+  border-color: var(--app-sage);
+  background-color: var(--app-sage);
+  color: #17211f;
+}
+
+[data-theme="dark"] .stayinn-calendar .fc-button-primary:hover {
+  border-color: var(--app-sage-dark);
+  background-color: var(--app-sage-dark);
+}
+
+[data-theme="dark"] .stayinn-calendar .fc-button-primary:disabled {
+  border-color: var(--app-border);
+  background-color: var(--app-surface-muted);
+  color: var(--app-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .chart-tooltip-fade {
+    animation: none;
+    transition: none;
   }
 }

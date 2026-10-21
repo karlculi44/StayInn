@@ -36,7 +36,7 @@ export default function ConfirmCancelReservationModal({
         aria-modal="true"
         aria-labelledby="confirm-cancel-title"
         aria-describedby="confirm-cancel-description"
-        className="w-full max-w-md cursor-default rounded-2xl border border-amber-200 bg-white p-6 shadow-xl"
+        className="animate-ui-enter w-full max-w-md cursor-default rounded-2xl border border-amber-200 bg-white p-6 shadow-xl"
       >
         <div className="flex items-start gap-4">
           <div

@@ -1,6 +1,7 @@
 import { Outlet, Link, NavLink } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import ProfileDropdown from "../components/ui/ProfileDropdown";
+import ThemeToggle from "../components/ui/ThemeToggle";
 
 const links = [
   { label: "Home", to: "/" },
@@ -32,7 +33,10 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <ProfileDropdown />
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <ProfileDropdown />
+        </div>
         <nav
           aria-label="Primary navigation"
           className="absolute inset-x-0 top-20 flex gap-6 overflow-x-auto border-t border-black/5 bg-white px-5 py-3 md:hidden"

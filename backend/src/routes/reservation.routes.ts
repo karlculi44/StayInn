@@ -14,6 +14,7 @@ import {
   getReservations,
   cancelReservation,
   getAllReservations,
+  getAdminReservationById,
   updateReservationStatus,
   updateAdminReservation,
 } from "../controllers/reservation.controller.js";
@@ -35,6 +36,12 @@ router.get(
   authorize("ADMIN"),
   validate(adminReservationQuerySchema, "query"),
   getAllReservations,
+);
+router.get(
+  "/admin/:id",
+  verifyToken,
+  authorize("ADMIN"),
+  getAdminReservationById,
 );
 router.patch(
   "/admin/:id",

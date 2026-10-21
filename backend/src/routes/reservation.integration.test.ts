@@ -269,6 +269,54 @@ describe("Reservation booking integration tests", () => {
     expect(response.body.user.email).toBe(user.email);
   });
 
+  it("returns reservation details to an authorized admin", async () => {
+    const user = await createTestUser();
+    const reservation = await createExistingReservation(
+      user.id,
+      futureDate(42),
+      futureDate(44),
+    );
+
+    const response = await request(app)
+      .get(`/api/reservations/admin/${reservation.id}`)
+      .set("Cookie", `accessToken=${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(reservation.id);
+    expect(response.body.referenceId).toBe(reservation.referenceId);
+    expect(response.body.user.email).toBe(user.email);
+    expect(response.body.room.roomType.name).toBeTruthy();
+  });
+
+  it("rejects guest access to admin reservation details", async () => {
+    const user = await createTestUser();
+    const reservation = await createExistingReservation(
+      user.id,
+      futureDate(45),
+      futureDate(47),
+    );
+    const guestToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+
+    const response = await request(app)
+      .get(`/api/reservations/admin/${reservation.id}`)
+      .set("Cookie", `accessToken=${guestToken}`);
+
+    expect(response.status).toBe(403);
+  });
+
+  it("returns not found for an unknown admin reservation ID", async () => {
+    const response = await request(app)
+      .get(`/api/reservations/admin/${randomUUID()}`)
+      .set("Cookie", `accessToken=${accessToken}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.message).toBe("Reservation not found");
+  });
+
   it("rejects guest access to admin reservation creation", async () => {
     const user = await createTestUser();
     const guestToken = jwt.sign(

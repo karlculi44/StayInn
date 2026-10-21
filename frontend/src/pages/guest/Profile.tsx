@@ -476,7 +476,7 @@ export default function Profile({
             role="dialog"
             aria-modal="true"
             aria-labelledby="change-password-title"
-            className="my-auto w-full max-w-lg cursor-default rounded-2xl bg-white p-6 shadow-xl sm:p-7"
+            className="animate-ui-enter my-auto w-full max-w-lg cursor-default rounded-2xl bg-white p-6 shadow-xl sm:p-7"
           >
             <h2 id="change-password-title" className="font-display text-2xl">
               Update password

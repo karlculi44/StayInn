@@ -36,9 +36,8 @@ export default function RoomStatusHistory() {
   const [history, setHistory] = useState<RoomStatusHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedEntry, setSelectedEntry] = useState<RoomStatusHistoryEntry | null>(
-    null,
-  );
+  const [selectedEntry, setSelectedEntry] =
+    useState<RoomStatusHistoryEntry | null>(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -87,9 +86,7 @@ export default function RoomStatusHistory() {
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
           Admin workspace
         </p>
-        <h1 className="mt-2 font-display text-4xl">
-          Room Status History
-        </h1>
+        <h1 className="mt-2 font-display text-4xl">Room Status History</h1>
         <p className="mt-3 text-sm text-muted">
           Review previous room status changes.
         </p>
@@ -172,7 +169,7 @@ export default function RoomStatusHistory() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="status-change-details-title"
-            className="max-h-[calc(100vh-2rem)] w-full max-w-4xl cursor-default overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8"
+            className="animate-ui-enter max-h-[calc(100vh-2rem)] w-full max-w-4xl cursor-default overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-8"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -219,7 +216,7 @@ export default function RoomStatusHistory() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Changed By
                 </dt>
-                <dd className="mt-2 break-words font-medium text-gray-900">
+                <dd className="mt-2 wrap-break-word font-medium text-gray-900">
                   {selectedEntry.admin
                     ? `${selectedEntry.admin.firstName} ${selectedEntry.admin.lastName}`.trim()
                     : "Unknown administrator"}
@@ -230,7 +227,7 @@ export default function RoomStatusHistory() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Date and Time
                 </dt>
-                <dd className="mt-2 break-words font-medium text-gray-900">
+                <dd className="mt-2 wrap-break-word font-medium text-gray-900">
                   {formatDateTime(selectedEntry.createdAt)}
                 </dd>
               </div>
@@ -240,7 +237,7 @@ export default function RoomStatusHistory() {
               <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
                 Full Reason
               </h3>
-              <p className="mt-4 min-h-32 whitespace-pre-wrap break-words text-base leading-7 text-gray-800">
+              <p className="mt-4 min-h-32 whitespace-pre-wrap wrap-break-word text-base leading-7 text-gray-800">
                 {selectedEntry.reason}
               </p>
             </section>

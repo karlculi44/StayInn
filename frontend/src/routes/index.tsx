@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AdminGuard, GuestGuard } from "./guards";
 import PublicLayout from "../layouts/PublicLayout";
@@ -16,8 +17,11 @@ import AdminPage from "../pages/admin/Dashboard";
 import AdminRooms from "../pages/admin/Rooms";
 import RoomTypes from "../pages/admin/RoomTypes";
 import AdminReservations from "../pages/admin/Reservations";
+import AdminReservationDetails from "../pages/admin/ReservationDetails";
 import Users from "../pages/admin/Users";
 import RoomStatusHistory from "../pages/admin/RoomStatusHistory";
+
+const AdminCalendar = lazy(() => import("../pages/admin/Calendar"));
 
 export default function AppRoutes() {
   return (
@@ -47,6 +51,18 @@ export default function AppRoutes() {
           />
           <Route path="/admin/room-types" element={<RoomTypes />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
+          <Route
+            path="/admin/reservations/:reservationId"
+            element={<AdminReservationDetails />}
+          />
+          <Route
+            path="/admin/calendar"
+            element={
+              <Suspense fallback={<div>Loading calendar...</div>}>
+                <AdminCalendar />
+              </Suspense>
+            }
+          />
           <Route path="/admin/users" element={<Users />} />
           <Route
             path="/admin/profile"

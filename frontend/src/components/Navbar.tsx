@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { ButtonLink } from "./ui/Button";
 import { useAuth } from "../context/useAuth";
 import ProfileDropdown from "./ui/ProfileDropdown";
+import ThemeToggle from "./ui/ThemeToggle";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
@@ -33,7 +34,8 @@ export default function Navbar() {
             </NavLink>
           ))}
         </nav>
-        <div className="flex min-h-9 min-w-34 items-center justify-end gap-3 sm:min-w-52">
+        <div className="flex min-h-9 items-center justify-end gap-3 sm:min-w-52">
+          <ThemeToggle />
           {!isLoading &&
             (user ? (
               <ProfileDropdown />

@@ -220,6 +220,36 @@ export const getAllReservations = asyncHandler(
   },
 );
 
+export const getAdminReservationById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getStringParam(req.params.id, "reservation ID");
+    const reservation = await prisma.reservation.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        room: {
+          include: {
+            roomType: true,
+          },
+        },
+      },
+    });
+
+    if (!reservation) {
+      throw new AppError("Reservation not found", 404);
+    }
+
+    res.json(reservation);
+  },
+);
+
 export const updateReservationStatus = asyncHandler(
   async (req: Request, res: Response) => {
     const id = getStringParam(req.params.id, "reservation ID");

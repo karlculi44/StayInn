@@ -400,7 +400,7 @@ export default function Users() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-user-title"
-            className="my-auto max-h-[calc(100vh-2rem)] w-full max-w-lg cursor-default overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-7"
+            className="animate-ui-enter my-auto max-h-[calc(100vh-2rem)] w-full max-w-lg cursor-default overflow-y-auto rounded-2xl bg-white p-6 shadow-xl sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
               <div>

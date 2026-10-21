@@ -50,6 +50,15 @@ export const getAdminReservations = async (): Promise<AdminReservation[]> => {
   return response.data;
 };
 
+export const getAdminReservation = async (
+  id: string,
+): Promise<AdminReservation> => {
+  const response = await api.get<AdminReservation>(
+    `/reservations/admin/${id}`,
+  );
+  return response.data;
+};
+
 export const updateReservationStatus = async (
   id: string,
   status: ReservationStatus,

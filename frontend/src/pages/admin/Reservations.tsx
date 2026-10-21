@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import {
   createAdminReservation,
   getAdminReservations,
-  updateAdminReservation,
-  updateReservationStatus,
 } from "../../services/reservation.service";
 import type {
   AdminReservation,
@@ -19,8 +18,6 @@ import {
 } from "../../services/user.service";
 import type { RoomListing } from "../../types";
 import axios from "axios";
-import { createPortal } from "react-dom";
-import ConfirmCancelReservationModal from "../../components/ui/ConfirmCancelReservationModal";
 import {
   adminRaisedDark,
   adminRaisedLight,
@@ -34,32 +31,11 @@ const statusOptions: Array<"ALL" | ReservationStatus> = [
   "COMPLETED",
 ];
 
-const statusTransitions: Record<ReservationStatus, ReservationStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["COMPLETED", "CANCELLED"],
-  CANCELLED: [],
-  COMPLETED: [],
-};
-
-const statusActionLabels: Record<ReservationStatus, string> = {
-  PENDING: "Set as pending",
-  CONFIRMED: "Confirm reservation",
-  CANCELLED: "Cancel reservation",
-  COMPLETED: "Mark as completed",
-};
-
 const pageSize = 10;
 
 type ReservationFormErrors = Partial<
   Record<"guest" | "checkIn" | "checkOut" | "guests" | "room", string>
 >;
-
-type StatusMenu = {
-  reservation: AdminReservation;
-  actions: ReservationStatus[];
-  top: number;
-  left: number;
-};
 
 const getTodayDateInput = () => {
   const today = new Date();
@@ -83,26 +59,36 @@ const getGuestName = (reservation: AdminReservation) =>
     : "Deleted user";
 
 export default function Reservations() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = location.state as
+    | {
+        reservationListState?: {
+          searchTerm?: string;
+          statusFilter?: "ALL" | ReservationStatus;
+          sortBy?: "checkIn" | "createdAt";
+          currentPage?: number;
+        };
+      }
+    | null;
+  const previousListState = routeState?.reservationListState;
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | ReservationStatus>(
-    "ALL",
+  const [searchTerm, setSearchTerm] = useState(
+    previousListState?.searchTerm ?? "",
   );
-  const [sortBy, setSortBy] = useState<"checkIn" | "createdAt">("checkIn");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [updatingReservationId, setUpdatingReservationId] = useState<
-    string | null
-  >(null);
-  const [reservationToCancel, setReservationToCancel] =
-    useState<AdminReservation | null>(null);
-  const [statusMenu, setStatusMenu] = useState<StatusMenu | null>(null);
-  const statusMenuRef = useRef<HTMLDivElement | null>(null);
-  const statusMenuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const firstStatusActionRef = useRef<HTMLButtonElement | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | ReservationStatus>(
+    previousListState?.statusFilter ?? "ALL",
+  );
+  const [sortBy, setSortBy] = useState<"checkIn" | "createdAt">(
+    previousListState?.sortBy ?? "checkIn",
+  );
+  const [currentPage, setCurrentPage] = useState(
+    previousListState?.currentPage ?? 1,
+  );
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -122,8 +108,6 @@ export default function Reservations() {
   const [isCreatingReservation, setIsCreatingReservation] = useState(false);
   const [formErrors, setFormErrors] = useState<ReservationFormErrors>({});
   const roomRequestId = useRef(0);
-  const [editingReservation, setEditingReservation] =
-    useState<AdminReservation | null>(null);
 
   const fetchReservations = async () => {
     const data = await getAdminReservations();
@@ -161,7 +145,7 @@ export default function Reservations() {
       const roomData = await getAvailableRooms(
         nextCheckIn,
         nextCheckOut,
-        excludeReservationId ?? editingReservation?.id,
+        excludeReservationId,
       );
       if (requestId === roomRequestId.current) {
         const eligibleRooms = roomData.filter(
@@ -200,51 +184,6 @@ export default function Reservations() {
     void loadReservations();
   }, []);
 
-  useEffect(() => {
-    if (!statusMenu) {
-      return;
-    }
-
-    firstStatusActionRef.current?.focus();
-
-    const closeMenuOnOutsideClick = (event: PointerEvent) => {
-      const target = event.target;
-      if (
-        target instanceof Node &&
-        !statusMenuRef.current?.contains(target) &&
-        !statusMenuButtonRef.current?.contains(target)
-      ) {
-        setStatusMenu(null);
-        statusMenuButtonRef.current = null;
-      }
-    };
-
-    const closeMenuOnKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setStatusMenu(null);
-        statusMenuButtonRef.current?.focus();
-        statusMenuButtonRef.current = null;
-      }
-    };
-
-    const closeMenuOnScroll = () => {
-      setStatusMenu(null);
-      statusMenuButtonRef.current = null;
-    };
-
-    document.addEventListener("pointerdown", closeMenuOnOutsideClick);
-    document.addEventListener("keydown", closeMenuOnKeyDown);
-    window.addEventListener("scroll", closeMenuOnScroll, true);
-    window.addEventListener("resize", closeMenuOnScroll);
-
-    return () => {
-      document.removeEventListener("pointerdown", closeMenuOnOutsideClick);
-      document.removeEventListener("keydown", closeMenuOnKeyDown);
-      window.removeEventListener("scroll", closeMenuOnScroll, true);
-      window.removeEventListener("resize", closeMenuOnScroll);
-    };
-  }, [statusMenu]);
-
   const filteredReservations = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -281,100 +220,6 @@ export default function Reservations() {
     pageToDisplay * pageSize,
   );
 
-  const handleStatusChange = async (
-    reservation: AdminReservation,
-    status: ReservationStatus,
-  ): Promise<boolean> => {
-    setUpdatingReservationId(reservation.id);
-    setActionError("");
-    setSuccessMessage("");
-
-    try {
-      const updatedReservation = await updateReservationStatus(
-        reservation.id,
-        status,
-      );
-      setReservations((currentReservations) =>
-        currentReservations.map((currentReservation) =>
-          currentReservation.id === reservation.id
-            ? { ...currentReservation, status: updatedReservation.status }
-            : currentReservation,
-        ),
-      );
-      setSuccessMessage(
-        `Reservation ${reservation.referenceId} was updated successfully.`,
-      );
-      try {
-        await fetchReservations();
-      } catch {
-        setActionError(
-          "Reservation status was updated, but the table could not be refreshed.",
-        );
-      }
-      return true;
-    } catch {
-      setActionError("Unable to update reservation status.");
-      return false;
-    } finally {
-      setUpdatingReservationId(null);
-    }
-  };
-
-  const confirmReservationCancellation = async () => {
-    if (!reservationToCancel) {
-      return;
-    }
-
-    const cancelled = await handleStatusChange(
-      reservationToCancel,
-      "CANCELLED",
-    );
-    if (cancelled) {
-      setReservationToCancel(null);
-    }
-  };
-
-  const openStatusMenu = (
-    event: React.MouseEvent<HTMLButtonElement>,
-    reservation: AdminReservation,
-  ) => {
-    const actions = statusTransitions[reservation.status];
-    if (actions.length === 0) {
-      return;
-    }
-
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const menuWidth = 224;
-    const menuHeight = actions.length * 44 + 8;
-    const left = Math.max(
-      8,
-      Math.min(bounds.right - menuWidth, window.innerWidth - menuWidth - 8),
-    );
-    const top =
-      bounds.bottom + menuHeight + 8 <= window.innerHeight
-        ? bounds.bottom + 4
-        : Math.max(8, bounds.top - menuHeight - 4);
-
-    statusMenuButtonRef.current = event.currentTarget;
-    setStatusMenu({ reservation, actions, top, left });
-  };
-
-  const selectStatusAction = (
-    reservation: AdminReservation,
-    status: ReservationStatus,
-  ) => {
-    setStatusMenu(null);
-    statusMenuButtonRef.current = null;
-
-    if (status === "CANCELLED") {
-      setActionError("");
-      setReservationToCancel(reservation);
-      return;
-    }
-
-    void handleStatusChange(reservation, status);
-  };
-
   const loadGuestUsers = () => {
     setUserLoadError("");
     setIsLoadingUsers(true);
@@ -385,7 +230,6 @@ export default function Reservations() {
   };
 
   const openCreateForm = () => {
-    setEditingReservation(null);
     setGuestSearch("");
     setSelectedUser(null);
     setCheckIn("");
@@ -409,47 +253,6 @@ export default function Reservations() {
     roomRequestId.current += 1;
     setIsLoadingRooms(false);
     setIsCreateFormOpen(false);
-    setEditingReservation(null);
-  };
-
-  const openEditForm = (reservation: AdminReservation) => {
-    if (
-      reservation.status !== "PENDING" &&
-      reservation.status !== "CONFIRMED"
-    ) {
-      return;
-    }
-
-    setEditingReservation(reservation);
-    setGuestSearch("");
-    setSelectedUser(
-      reservation.user
-        ? {
-            id: reservation.user.id,
-            firstName: reservation.user.firstName,
-            lastName: reservation.user.lastName,
-            email: reservation.user.email,
-          }
-        : null,
-    );
-    setCheckIn(reservation.checkIn.slice(0, 10));
-    setCheckOut(reservation.checkOut.slice(0, 10));
-    setGuestCount(String(reservation.guests));
-    setAvailableRooms([]);
-    setSelectedRoomId("");
-    setRoomLoadError("");
-    setFormErrors({});
-    setActionError("");
-    setSuccessMessage("");
-    setIsCreateFormOpen(true);
-    setIsLoadingRooms(false);
-    loadGuestUsers();
-    void loadAvailableRooms(
-      reservation.checkIn.slice(0, 10),
-      reservation.checkOut.slice(0, 10),
-      reservation.id,
-      reservation.room.id,
-    );
   };
 
   const matchingUsers = users.filter((user) => {
@@ -523,20 +326,13 @@ export default function Reservations() {
         checkOut,
         guests: parsedGuestCount,
       };
-      const savedReservation = editingReservation
-        ? await updateAdminReservation(editingReservation.id, reservationInput)
-        : await createAdminReservation(reservationInput);
+      const savedReservation = await createAdminReservation(reservationInput);
 
       setIsCreateFormOpen(false);
-      setEditingReservation(null);
       setSuccessMessage(
-        editingReservation
-          ? `Reservation ${savedReservation.referenceId} was updated successfully.`
-          : `Reservation ${savedReservation.referenceId} was created successfully.`,
+        `Reservation ${savedReservation.referenceId} was created successfully.`,
       );
-      if (!editingReservation) {
-        setCurrentPage(1);
-      }
+      setCurrentPage(1);
 
       try {
         await fetchReservations();
@@ -550,8 +346,7 @@ export default function Reservations() {
         ? (error.response?.data as { message?: string } | undefined)?.message
         : undefined;
       setActionError(
-        message ??
-          `Unable to ${editingReservation ? "update" : "create"} the reservation. The room may no longer be available.`,
+        message ?? "Unable to create the reservation.",
       );
     } finally {
       setIsCreatingReservation(false);
@@ -584,7 +379,7 @@ export default function Reservations() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-reservation-title"
-            className="my-auto max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-cream p-5 shadow-xl sm:p-7"
+            className="animate-ui-enter my-auto max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-cream p-5 shadow-xl sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -595,14 +390,10 @@ export default function Reservations() {
                   id="create-reservation-title"
                   className="mt-2 font-display text-3xl"
                 >
-                  {editingReservation
-                    ? "Edit Reservation"
-                    : "Create Reservation"}
+                  Create Reservation
                 </h2>
                 <p className="mt-2 text-sm text-muted">
-                  {editingReservation
-                    ? "Update the guest, stay dates, room, or guest count."
-                    : "Reservations can currently be created for registered users only."}
+                  Reservations can currently be created for registered users only.
                 </p>
               </div>
               <button
@@ -961,12 +752,8 @@ export default function Reservations() {
                   className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
                 >
                   {isCreatingReservation
-                    ? editingReservation
-                      ? "Saving changes..."
-                      : "Creating reservation..."
-                    : editingReservation
-                      ? "Save Changes"
-                      : "Create Reservation"}
+                    ? "Creating reservation..."
+                    : "Create Reservation"}
                 </button>
               </div>
             </form>
@@ -981,11 +768,11 @@ export default function Reservations() {
 
         {!isLoading && !loadError && (
           <>
-            <div className="flex flex-col gap-3 rounded-2xl bg-white p-4 md:flex-row md:items-end">
-              <div className="flex-1">
+            <div className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_12rem_12rem] xl:items-end xl:gap-5">
+              <div className="min-w-0">
                 <label
                   htmlFor="reservation-search"
-                  className="text-sm font-medium"
+                  className="block text-sm font-medium"
                 >
                   Search reservations
                 </label>
@@ -998,14 +785,14 @@ export default function Reservations() {
                     setCurrentPage(1);
                   }}
                   placeholder="Reference ID or guest name"
-                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                  className="mt-2 block w-full rounded-xl border px-4 py-3"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="reservation-status-filter"
-                  className="text-sm font-medium"
+                  className="block text-sm font-medium"
                 >
                   Status
                 </label>
@@ -1018,7 +805,7 @@ export default function Reservations() {
                     );
                     setCurrentPage(1);
                   }}
-                  className="mt-2 w-full rounded-xl border px-4 py-3 md:w-44"
+                  className="mt-2 block w-full rounded-xl border px-4 py-3"
                 >
                   {statusOptions.map((status) => (
                     <option key={status} value={status}>
@@ -1031,7 +818,7 @@ export default function Reservations() {
               <div>
                 <label
                   htmlFor="reservation-sort"
-                  className="text-sm font-medium"
+                  className="block text-sm font-medium"
                 >
                   Sort by
                 </label>
@@ -1042,7 +829,7 @@ export default function Reservations() {
                     setSortBy(event.target.value as "checkIn" | "createdAt");
                     setCurrentPage(1);
                   }}
-                  className="mt-2 w-full rounded-xl border px-4 py-3 md:w-44"
+                  className="mt-2 block w-full rounded-xl border px-4 py-3"
                 >
                   <option value="checkIn">Check-in date</option>
                   <option value="createdAt">Created date</option>
@@ -1077,37 +864,59 @@ export default function Reservations() {
             ) : (
               <>
                 <div className="overflow-x-auto rounded-2xl bg-white">
-                  <table className="w-full min-w-262.5 text-left text-sm">
+                  <table className="w-full min-w-240 text-left text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="px-6 py-4">No.</th>
                         <th className="px-6 py-4">Reference ID</th>
                         <th className="px-6 py-4">Guest</th>
                         <th className="px-6 py-4">Room</th>
-                        <th className="px-6 py-4">Check-in / Check-out</th>
-                        <th className="px-6 py-4">Guests</th>
+                        <th className="px-6 py-4">Check-in</th>
+                        <th className="px-6 py-4">Check-out</th>
                         <th className="px-6 py-4">Total Amount</th>
                         <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Actions</th>
                       </tr>
                     </thead>
 
                     <tbody>
-                      {paginatedReservations.map((reservation, index) => {
-                        const isUpdating =
-                          updatingReservationId === reservation.id;
-                        const availableTransitions =
-                          statusTransitions[reservation.status];
-
-                        return (
+                      {paginatedReservations.map((reservation) => (
                           <tr
                             key={reservation.id}
-                            className="border-b last:border-b-0"
+                            tabIndex={0}
+                            aria-label={`View reservation ${reservation.referenceId}`}
+                            onClick={() =>
+                              navigate(`/admin/reservations/${reservation.id}`, {
+                                state: {
+                                  from: `${location.pathname}${location.search}`,
+                                  reservationListState: {
+                                    searchTerm,
+                                    statusFilter,
+                                    sortBy,
+                                    currentPage: pageToDisplay,
+                                  },
+                                },
+                              })
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                navigate(
+                                  `/admin/reservations/${reservation.id}`,
+                                  {
+                                    state: {
+                                      from: `${location.pathname}${location.search}`,
+                                      reservationListState: {
+                                        searchTerm,
+                                        statusFilter,
+                                        sortBy,
+                                        currentPage: pageToDisplay,
+                                      },
+                                    },
+                                  },
+                                );
+                              }
+                            }}
+                            className="cursor-pointer border-b outline-none last:border-b-0 hover:bg-cream/60 focus-visible:bg-cream/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage"
                           >
-                            <td className="whitespace-nowrap px-6 py-4">
-                              {(pageToDisplay - 1) * pageSize + index + 1}
-                            </td>
-
                             <td className="whitespace-nowrap px-6 py-4 font-semibold">
                               {reservation.referenceId}
                             </td>
@@ -1126,82 +935,22 @@ export default function Reservations() {
                             </td>
 
                             <td className="whitespace-nowrap px-6 py-4">
-                              <p>{formatDate(reservation.checkIn)}</p>
-                              <p className="mt-1 text-muted">
-                                -{formatDate(reservation.checkOut)}
-                              </p>
+                              {formatDate(reservation.checkIn)}
                             </td>
 
-                            <td className="px-6 py-4">{reservation.guests}</td>
+                            <td className="whitespace-nowrap px-6 py-4">
+                              {formatDate(reservation.checkOut)}
+                            </td>
 
                             <td className="whitespace-nowrap px-6 py-4 font-semibold">
                               {formatCurrency(Number(reservation.totalAmount))}
                             </td>
 
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <ReservationStatusBadge
-                                  status={reservation.status}
-                                />
-                                {availableTransitions.length > 0 && (
-                                  <button
-                                    type="button"
-                                    disabled={isUpdating}
-                                    aria-label={`Status actions for reservation ${reservation.referenceId}`}
-                                    aria-haspopup="menu"
-                                    aria-expanded={
-                                      statusMenu?.reservation.id ===
-                                      reservation.id
-                                    }
-                                    aria-controls={
-                                      statusMenu?.reservation.id ===
-                                      reservation.id
-                                        ? "reservation-status-menu"
-                                        : undefined
-                                    }
-                                    onClick={(event) => {
-                                      if (
-                                        statusMenu?.reservation.id ===
-                                        reservation.id
-                                      ) {
-                                        setStatusMenu(null);
-                                        statusMenuButtonRef.current = null;
-                                        return;
-                                      }
-                                      openStatusMenu(event, reservation);
-                                    }}
-                                    className="inline-flex size-8 items-center justify-center rounded-full text-muted hover:bg-cream hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    <svg
-                                      aria-hidden="true"
-                                      viewBox="0 0 24 24"
-                                      fill="currentColor"
-                                      className="size-5"
-                                    >
-                                      <circle cx="5" cy="12" r="1.8" />
-                                      <circle cx="12" cy="12" r="1.8" />
-                                      <circle cx="19" cy="12" r="1.8" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4">
-                              {(reservation.status === "PENDING" ||
-                                reservation.status === "CONFIRMED") && (
-                                <button
-                                  type="button"
-                                  disabled={isUpdating || isCreatingReservation}
-                                  onClick={() => openEditForm(reservation)}
-                                  className={`rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
-                                >
-                                  Edit
-                                </button>
-                              )}
+                              <ReservationStatusBadge status={reservation.status} />
                             </td>
                           </tr>
-                        );
-                      })}
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -1242,48 +991,6 @@ export default function Reservations() {
           </>
         )}
       </div>
-      {statusMenu &&
-        createPortal(
-          <div
-            id="reservation-status-menu"
-            ref={statusMenuRef}
-            role="menu"
-            aria-label={`Status actions for reservation ${statusMenu.reservation.referenceId}`}
-            className="fixed z-60 min-w-56 rounded-xl border border-black/10 bg-white p-1.5 shadow-xl"
-            style={{ top: statusMenu.top, left: statusMenu.left }}
-          >
-            {statusMenu.actions.map((status, index) => (
-              <button
-                key={status}
-                ref={index === 0 ? firstStatusActionRef : undefined}
-                type="button"
-                role="menuitem"
-                onClick={() =>
-                  selectStatusAction(statusMenu.reservation, status)
-                }
-                className={`block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium hover:bg-cream focus-visible:bg-cream focus-visible:outline-none ${
-                  status === "CANCELLED"
-                    ? "text-red-700 hover:text-red-800"
-                    : "text-ink"
-                }`}
-              >
-                {statusActionLabels[status]}
-              </button>
-            ))}
-          </div>,
-          document.body,
-        )}
-      <ConfirmCancelReservationModal
-        isOpen={reservationToCancel !== null}
-        referenceId={reservationToCancel?.referenceId ?? ""}
-        isCancelling={
-          reservationToCancel !== null &&
-          updatingReservationId === reservationToCancel.id
-        }
-        error={actionError}
-        onCancel={() => setReservationToCancel(null)}
-        onConfirm={() => void confirmReservationCancellation()}
-      />
     </div>
   );
 }

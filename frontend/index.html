@@ -16,6 +16,18 @@
       rel="stylesheet"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        const theme = localStorage.getItem("stayinn-theme");
+        document.documentElement.dataset.theme =
+          theme === "dark" ? "dark" : "light";
+        document.documentElement.style.colorScheme =
+          theme === "dark" ? "dark" : "light";
+      } catch {
+        document.documentElement.dataset.theme = "light";
+        document.documentElement.style.colorScheme = "light";
+      }
+    </script>
     <title>StayInn</title>
   </head>
   <body>

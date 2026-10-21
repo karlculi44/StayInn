@@ -47,7 +47,7 @@ export default function ConfirmDeleteModal({
             ? "confirm-delete-details confirm-delete-description"
             : "confirm-delete-description"
         }
-        className="w-full max-w-md cursor-default rounded-2xl border border-red-200 bg-white p-6 shadow-xl"
+        className="animate-ui-enter w-full max-w-md cursor-default rounded-2xl border border-red-200 bg-white p-6 shadow-xl"
       >
         <div className="flex items-start gap-4">
           <div
