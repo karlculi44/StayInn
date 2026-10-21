@@ -8,7 +8,7 @@
   --color-sage-dark: #2f5144;
   --color-gold: #c69b5c;
   --font-sans: "Inter", "Segoe UI", sans-serif;
-  --font-display: Georgia, "Times New Roman", serif;
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
 }
 
 /* Opacity-only fade so the tooltip never animates its position. */

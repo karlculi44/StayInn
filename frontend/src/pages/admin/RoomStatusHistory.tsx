@@ -84,10 +84,13 @@ export default function RoomStatusHistory() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
+          Admin workspace
+        </p>
+        <h1 className="mt-2 font-display text-4xl">
           Room Status History
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-3 text-sm text-muted">
           Review previous room status changes.
         </p>
       </div>
