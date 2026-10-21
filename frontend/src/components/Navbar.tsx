@@ -9,6 +9,7 @@ const links = [
 ];
 export default function Navbar() {
   const { user, isLoading } = useAuth();
+  const dashboardPath = user?.role === "ADMIN" ? "/admin" : "/dashboard";
 
   return (
     <header className="border-b border-black/5 bg-cream/95">
@@ -22,8 +23,8 @@ export default function Navbar() {
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
             <NavLink
-              key={link.to}
-              to={link.to}
+              key={link.label}
+              to={link.label === "Dashboard" ? dashboardPath : link.to}
               className={({ isActive }) =>
                 `text-sm font-medium ${isActive ? "text-sage" : "text-muted hover:text-sage"}`
               }
