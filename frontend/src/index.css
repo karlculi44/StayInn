@@ -306,6 +306,17 @@
   background: linear-gradient(180deg, #46775f, #39664f);
 }
 
+.stayinn-calendar .fc-daygrid-event {
+  transition:
+    transform 140ms ease-out,
+    box-shadow 140ms ease-out;
+}
+
+.stayinn-calendar .fc-daygrid-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 16%);
+}
+
 [data-theme="dark"] .stayinn-calendar {
   --fc-page-bg-color: var(--app-surface);
   --fc-neutral-bg-color: var(--app-surface-muted);

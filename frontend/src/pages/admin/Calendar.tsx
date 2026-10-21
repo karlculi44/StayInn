@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -34,12 +34,37 @@ const statusOptions: Array<"ALL" | ReservationStatus> = [
 
 const statusColors: Record<
   ReservationStatus,
-  { backgroundColor: string; borderColor: string }
+  { backgroundColor: string; borderColor: string; textColor?: string }
 > = {
   PENDING: { backgroundColor: "#a16207", borderColor: "#854d0e" },
   CONFIRMED: { backgroundColor: "#15803d", borderColor: "#166534" },
   CANCELLED: { backgroundColor: "#b91c1c", borderColor: "#991b1b" },
   COMPLETED: { backgroundColor: "#1d4ed8", borderColor: "#1e40af" },
+};
+const pastReservationColors: Record<
+  ReservationStatus,
+  { backgroundColor: string; borderColor: string; textColor: string }
+> = {
+  PENDING: {
+    backgroundColor: "#fef3c7",
+    borderColor: "#fde68a",
+    textColor: "#92400e",
+  },
+  CONFIRMED: {
+    backgroundColor: "#dcfce7",
+    borderColor: "#bbf7d0",
+    textColor: "#166534",
+  },
+  CANCELLED: {
+    backgroundColor: "#fee2e2",
+    borderColor: "#fecaca",
+    textColor: "#991b1b",
+  },
+  COMPLETED: {
+    backgroundColor: "#dbeafe",
+    borderColor: "#bfdbfe",
+    textColor: "#1e40af",
+  },
 };
 
 type VisibleRange = {
@@ -73,6 +98,30 @@ export default function Calendar() {
   const [selectedReservation, setSelectedReservation] =
     useState<AdminReservation | null>(null);
   const [visibleRange, setVisibleRange] = useState<VisibleRange | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const previousStatusFilter = useRef(statusFilter);
+
+  useLayoutEffect(() => {
+    if (previousStatusFilter.current === statusFilter) {
+      return;
+    }
+    previousStatusFilter.current = statusFilter;
+
+    const calendar = calendarRef.current;
+    if (
+      !calendar ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const animation = calendar.animate(
+      [{ opacity: 0.7 }, { opacity: 1 }],
+      { duration: 160, easing: "ease-out" },
+    );
+
+    return () => animation.cancel();
+  }, [statusFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -118,24 +167,35 @@ export default function Calendar() {
   }, [selectedReservation]);
 
   const events = useMemo<EventInput[]>(
-    () =>
-      reservations
+    () => {
+      const today = new Date().toISOString().slice(0, 10);
+
+      return reservations
         .filter(
           (reservation) =>
             statusFilter === "ALL" || reservation.status === statusFilter,
         )
-        .map((reservation) => ({
-          id: reservation.id,
-          title: getGuestName(reservation),
-          start: toCalendarDate(reservation.checkIn),
-          end: toCalendarDate(reservation.checkOut),
-          allDay: true,
-          backgroundColor: statusColors[reservation.status].backgroundColor,
-          borderColor: statusColors[reservation.status].borderColor,
-          extendedProps: {
-            roomNumber: reservation.room.roomNumber,
-          },
-        })),
+        .map((reservation) => {
+          const isPast = toCalendarDate(reservation.checkOut) <= today;
+          const colors = isPast
+            ? pastReservationColors[reservation.status]
+            : statusColors[reservation.status];
+
+          return {
+            id: reservation.id,
+            title: getGuestName(reservation),
+            start: toCalendarDate(reservation.checkIn),
+            end: toCalendarDate(reservation.checkOut),
+            allDay: true,
+            backgroundColor: colors.backgroundColor,
+            borderColor: colors.borderColor,
+            ...(colors.textColor ? { textColor: colors.textColor } : {}),
+            extendedProps: {
+              roomNumber: reservation.room.roomNumber,
+            },
+          };
+        });
+    },
     [reservations, statusFilter],
   );
 
@@ -221,6 +281,9 @@ export default function Calendar() {
           </span>
         ))}
       </div>
+      <p className="text-xs text-muted">
+        Past reservations retain their status color in a lighter shade.
+      </p>
 
       {isLoading ? (
         <Loading label="Loading reservations..." />
@@ -242,7 +305,10 @@ export default function Calendar() {
               No reservations match this status in the displayed dates.
             </p>
           )}
-          <div className="stayinn-calendar min-h-144 overflow-x-auto">
+          <div
+            ref={calendarRef}
+            className="stayinn-calendar min-h-144 overflow-x-auto"
+          >
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"

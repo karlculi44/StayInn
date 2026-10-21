@@ -222,13 +222,6 @@ export default function RoomDetails() {
           <div className="mt-6">
             {user?.role === "ADMIN" ? (
               <div className="rounded-2xl bg-cream p-5">
-                <p className="font-semibold">
-                  Admin accounts cannot make guest bookings.
-                </p>
-                <p className="mt-2 text-sm text-muted">
-                  To make a personal reservation, use a separate Guest account.
-                  You can create reservations for guests from the admin workspace.
-                </p>
                 <Link
                   to="/admin/reservations"
                   className="mt-4 inline-flex rounded-xl bg-sage px-5 py-3 font-semibold text-white"
@@ -238,124 +231,130 @@ export default function RoomDetails() {
               </div>
             ) : (
               <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium">
-                Check-in
-                <input
-                  type="date"
-                  value={checkIn}
-                  min={new Date().toISOString().split("T")[0]}
-                  onChange={(event) => setCheckIn(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
-                />
-              </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="text-sm font-medium">
+                    Check-in
+                    <input
+                      type="date"
+                      value={checkIn}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(event) => setCheckIn(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
+                    />
+                  </label>
 
-              <label className="text-sm font-medium">
-                Check-out
-                <input
-                  type="date"
-                  value={checkOut}
-                  min={checkIn || new Date().toISOString().split("T")[0]}
-                  onChange={(event) => setCheckOut(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
-                />
-              </label>
+                  <label className="text-sm font-medium">
+                    Check-out
+                    <input
+                      type="date"
+                      value={checkOut}
+                      min={checkIn || new Date().toISOString().split("T")[0]}
+                      onChange={(event) => setCheckOut(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3"
+                    />
+                  </label>
 
-              <label htmlFor="guests" className="block text-sm font-semibold">
-                Guests
-                <input
-                  id="guests"
-                  type="number"
-                  min={1}
-                  max={room.roomType.capacity}
-                  value={guests}
-                  onChange={handleGuestsChange}
-                  className="mt-2 w-full rounded-xl border px-4 py-3"
-                />
-                <p className="mt-1 text-xs text-muted">
-                  Maximum {room.roomType.capacity} guests
-                </p>
-              </label>
-            </div>
+                  <label
+                    htmlFor="guests"
+                    className="block text-sm font-semibold"
+                  >
+                    Guests
+                    <input
+                      id="guests"
+                      type="number"
+                      min={1}
+                      max={room.roomType.capacity}
+                      value={guests}
+                      onChange={handleGuestsChange}
+                      className="mt-2 w-full rounded-xl border px-4 py-3"
+                    />
+                    <p className="mt-1 text-xs text-muted">
+                      Maximum {room.roomType.capacity} guests
+                    </p>
+                  </label>
+                </div>
 
-            {isAvailable && nights > 0 && (
-              <div className="mt-4 rounded-2xl bg-white p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-gold">
-                  Booking summary
-                </p>
+                {isAvailable && nights > 0 && (
+                  <div className="mt-4 rounded-2xl bg-white p-5">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gold">
+                      Booking summary
+                    </p>
 
-                <div className="mt-4 space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted">Room</span>
-                    <span>{room.roomType.name}</span>
-                  </div>
+                    <div className="mt-4 space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted">Room</span>
+                        <span>{room.roomType.name}</span>
+                      </div>
 
-                  <div className="flex justify-between">
-                    <span className="text-muted">Guests</span>
-                    <span>{guests}</span>
-                  </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted">Guests</span>
+                        <span>{guests}</span>
+                      </div>
 
-                  <div className="flex justify-between">
-                    <span className="text-muted">Nights</span>
-                    <span>{nights}</span>
-                  </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted">Nights</span>
+                        <span>{nights}</span>
+                      </div>
 
-                  <div className="flex justify-between">
-                    <span className="text-muted">Price per night</span>
-                    <span>
-                      ₱{Number(room.roomType.pricePerNight).toLocaleString()}
-                    </span>
-                  </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted">Price per night</span>
+                        <span>
+                          ₱
+                          {Number(room.roomType.pricePerNight).toLocaleString()}
+                        </span>
+                      </div>
 
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between font-semibold">
-                      <span>Total</span>
-                      <span>₱{total.toLocaleString()}</span>
+                      <div className="border-t pt-3">
+                        <div className="flex justify-between font-semibold">
+                          <span>Total</span>
+                          <span>₱{total.toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            <button
-              type="button"
-              onClick={handleCheckAvailability}
-              disabled={isChecking || !checkIn || !checkOut}
-              className="mt-4 w-full rounded-xl bg-sage px-5 py-3 font-semibold text-white disabled:opacity-50"
-            >
-              {isChecking ? "Checking..." : "Check availability"}
-            </button>
+                <button
+                  type="button"
+                  onClick={handleCheckAvailability}
+                  disabled={isChecking || !checkIn || !checkOut}
+                  className="mt-4 w-full rounded-xl bg-sage px-5 py-3 font-semibold text-white disabled:opacity-50"
+                >
+                  {isChecking ? "Checking..." : "Check availability"}
+                </button>
 
-            {isAvailable && (
-              <button
-                type="button"
-                onClick={handleBooking}
-                disabled={isBooking}
-                className="w-full rounded-xl bg-sage mt-2 px-6 py-3 font-semibold text-white disabled:opacity-50"
-              >
-                {isBooking ? "Booking..." : "Book this room"}
-              </button>
-            )}
+                {isAvailable && (
+                  <button
+                    type="button"
+                    onClick={handleBooking}
+                    disabled={isBooking}
+                    className="w-full rounded-xl bg-sage mt-2 px-6 py-3 font-semibold text-white disabled:opacity-50"
+                  >
+                    {isBooking ? "Booking..." : "Book this room"}
+                  </button>
+                )}
 
-            {bookingError && (
-              <p className="text-sm text-red-600">{bookingError}</p>
-            )}
+                {bookingError && (
+                  <p className="text-sm text-red-600">{bookingError}</p>
+                )}
 
-            {isAvailable === true && (
-              <p className="mt-3 text-sm text-sage">
-                This room is available for your selected dates.
-              </p>
-            )}
+                {isAvailable === true && (
+                  <p className="mt-3 text-sm text-sage">
+                    This room is available for your selected dates.
+                  </p>
+                )}
 
-            {isAvailable === false && (
-              <p className="mt-3 text-sm text-red-600">
-                This room is not available for your selected dates.
-              </p>
-            )}
+                {isAvailable === false && (
+                  <p className="mt-3 text-sm text-red-600">
+                    This room is not available for your selected dates.
+                  </p>
+                )}
 
-            {availabilityError && (
-              <p className="mt-3 text-sm text-red-600">{availabilityError}</p>
-            )}
+                {availabilityError && (
+                  <p className="mt-3 text-sm text-red-600">
+                    {availabilityError}
+                  </p>
+                )}
               </>
             )}
           </div>
