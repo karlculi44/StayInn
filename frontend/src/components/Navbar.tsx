@@ -1,7 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { ButtonLink } from "./ui/Button";
 import { useAuth } from "../context/useAuth";
-import ProfileAvatar from "./ui/ProfileAvatar";
+import ProfileDropdown from "./ui/ProfileDropdown";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
@@ -35,14 +35,7 @@ export default function Navbar() {
         <div className="flex min-h-9 min-w-34 items-center justify-end gap-3 sm:min-w-52">
           {!isLoading &&
             (user ? (
-              <NavLink
-                to={user.role === "ADMIN" ? "/admin/profile" : "/profile"}
-                aria-label="View profile"
-                title="View profile"
-                className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
-              >
-                <ProfileAvatar profilePictureUrl={user.profilePictureUrl} />
-              </NavLink>
+              <ProfileDropdown />
             ) : (
               <>
                 <NavLink

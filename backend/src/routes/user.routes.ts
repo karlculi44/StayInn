@@ -3,6 +3,7 @@ import {
   createUser,
   getUsers,
   getUserById,
+  getUserProfilePicture,
   updateUserRole,
   deleteUser,
 } from "../controllers/user.controller.js";
@@ -23,6 +24,12 @@ router.post(
   createUser,
 );
 router.get("/", verifyToken, authorize("ADMIN"), getUsers);
+router.get(
+  "/:id/profile-picture",
+  verifyToken,
+  authorize("ADMIN"),
+  getUserProfilePicture,
+);
 router.get("/:id", verifyToken, authorize("ADMIN"), getUserById);
 router.patch(
   "/:id/role",

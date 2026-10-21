@@ -1,5 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
+import { NavLink } from "react-router-dom";
 
 const items = [
   { label: "Overview", to: "/admin" },
@@ -10,14 +9,6 @@ const items = [
   { label: "Users", to: "/admin/users" },
 ];
 export default function AdminSidebar() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleLogout() {
-    await logout();
-    navigate("/");
-  }
-
   return (
     <aside className="w-full shrink-0 border-b border-black/5 bg-white p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:top-20 lg:z-20 lg:flex lg:h-[calc(100vh-80px)] lg:w-64 lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-6">
       <p className="mb-5 px-3 text-xs font-bold uppercase tracking-widest text-muted">
@@ -37,15 +28,6 @@ export default function AdminSidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="mt-6 border-t border-black/5 pt-6 lg:mt-auto">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted hover:bg-cream hover:text-ink"
-        >
-          Log out
-        </button>
-      </div>
     </aside>
   );
 }

@@ -8,6 +8,7 @@ import {
   type AdminUser,
 } from "../../services/user.service";
 import { ErrorState } from "../../components/ui/States";
+import ProfileAvatar from "../../components/ui/ProfileAvatar";
 import { useAuth } from "../../context/useAuth";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import {
@@ -24,8 +25,7 @@ export default function Users() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] =
-    useState<AdminUser["role"]>("GUEST");
+  const [selectedRole, setSelectedRole] = useState<AdminUser["role"]>("GUEST");
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -118,9 +118,7 @@ export default function Users() {
           responseData?.errors ?? {},
         ).flat()[0];
         setCreateError(
-          validationError ??
-            responseData?.message ??
-            "Unable to create user.",
+          validationError ?? responseData?.message ?? "Unable to create user.",
         );
       } else {
         setCreateError("An unexpected error occurred.");
@@ -136,7 +134,9 @@ export default function Users() {
       setUsers(await getUsers());
     } catch {
       setUsers((currentUsers) => [createdUser, ...currentUsers]);
-      setActionError("User was created, but the user list could not be refreshed.");
+      setActionError(
+        "User was created, but the user list could not be refreshed.",
+      );
     } finally {
       setIsCreating(false);
     }
@@ -240,7 +240,10 @@ export default function Users() {
       )}
 
       {actionError && (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600"
+        >
           {actionError}
         </p>
       )}
@@ -249,6 +252,7 @@ export default function Users() {
         <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-600">
             <tr>
+              <th className="px-6 py-4 font-medium">Image</th>
               <th className="px-6 py-4 font-medium">Name</th>
               <th className="px-6 py-4 font-medium">Email</th>
               <th className="px-6 py-4 font-medium">Role</th>
@@ -260,6 +264,12 @@ export default function Users() {
           <tbody className="divide-y divide-gray-100">
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <ProfileAvatar
+                    profilePictureUrl={user.profilePictureUrl}
+                    className="size-10"
+                  />
+                </td>
                 <td className="px-6 py-4 font-medium text-gray-900">
                   {user.firstName} {user.lastName}
                 </td>
@@ -337,9 +347,7 @@ export default function Users() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setUserToDelete(user)
-                      }
+                      onClick={() => setUserToDelete(user)}
                       disabled={
                         currentUser?.id === user.id ||
                         deletingUserId !== null ||
@@ -356,7 +364,7 @@ export default function Users() {
 
             {users.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   No users found.
                 </td>
               </tr>
@@ -418,9 +426,7 @@ export default function Users() {
                     autoComplete="given-name"
                     required
                     value={createFirstName}
-                    onChange={(event) =>
-                      setCreateFirstName(event.target.value)
-                    }
+                    onChange={(event) => setCreateFirstName(event.target.value)}
                     placeholder="Alex"
                     className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
                   />
@@ -438,9 +444,7 @@ export default function Users() {
                     autoComplete="family-name"
                     required
                     value={createLastName}
-                    onChange={(event) =>
-                      setCreateLastName(event.target.value)
-                    }
+                    onChange={(event) => setCreateLastName(event.target.value)}
                     placeholder="Morgan"
                     className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
                   />
@@ -510,7 +514,10 @@ export default function Users() {
               </div>
 
               {createError && (
-                <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                <p
+                  role="alert"
+                  className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
                   {createError}
                 </p>
               )}

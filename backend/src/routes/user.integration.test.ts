@@ -6,8 +6,17 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import app from "../app.js";
 import { generateReservationReferenceId } from "../utils/reservationReference.js";
+import {
+  removeProfilePicture,
+  storeProfilePicture,
+} from "../services/profilePicture.js";
 
 const createdUserIds: string[] = [];
+const storedPictureKeys = new Set<string>();
+const pngImage = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/J1sAAAAASUVORK5CYII=",
+  "base64",
+);
 
 let testRoomTypeId = "";
 let testRoomId = "";
@@ -80,6 +89,11 @@ describe("User management integration tests", () => {
   });
 
   afterEach(async () => {
+    for (const key of storedPictureKeys) {
+      await removeProfilePicture(key);
+    }
+    storedPictureKeys.clear();
+
     if (createdUserIds.length === 0) return;
 
     // Remove reservations before deleting their users.
@@ -136,6 +150,66 @@ describe("User management integration tests", () => {
     });
 
     expect(updatedUser?.role).toBe("ADMIN");
+  });
+
+  it("returns each user's profile picture and serves it only to admins", async () => {
+    const user = await createTestUser();
+    const initialListResponse = await request(app)
+      .get("/api/users")
+      .set("Cookie", `accessToken=${accessToken}`);
+
+    expect(initialListResponse.status).toBe(200);
+    expect(
+      initialListResponse.body.find(
+        (listedUser: { id: string }) => listedUser.id === user.id,
+      ).profilePictureUrl,
+    ).toBeNull();
+
+    const pictureKey = await storeProfilePicture(pngImage, "png");
+    storedPictureKeys.add(pictureKey);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { profilePicture: pictureKey },
+    });
+
+    const listResponse = await request(app)
+      .get("/api/users")
+      .set("Cookie", `accessToken=${accessToken}`);
+    const listedUser = listResponse.body.find(
+      (entry: { id: string }) => entry.id === user.id,
+    );
+
+    expect(listResponse.status).toBe(200);
+    expect(listedUser.profilePictureUrl).toBe(
+      `/api/users/${user.id}/profile-picture?v=${encodeURIComponent(pictureKey)}`,
+    );
+    expect(listedUser).not.toHaveProperty("profilePicture");
+
+    const pictureResponse = await request(app)
+      .get(`/api/users/${user.id}/profile-picture`)
+      .set("Cookie", `accessToken=${accessToken}`);
+    expect(pictureResponse.status).toBe(200);
+    expect(pictureResponse.headers["content-type"]).toContain("image/png");
+    expect(pictureResponse.body).toEqual(pngImage);
+
+    const unauthenticatedResponse = await request(app).get(
+      `/api/users/${user.id}/profile-picture`,
+    );
+    expect(unauthenticatedResponse.status).toBe(401);
+
+    const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
+    if (!secret) {
+      throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
+    }
+    const guestToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      secret,
+      { expiresIn: "5m" },
+    );
+    const guestResponse = await request(app)
+      .get(`/api/users/${user.id}/profile-picture`)
+      .set("Cookie", `accessToken=${guestToken}`);
+    expect(guestResponse.status).toBe(403);
   });
 
   it("allows an admin to create a user with a hashed password and safe response", async () => {

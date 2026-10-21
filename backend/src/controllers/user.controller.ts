@@ -5,6 +5,10 @@ import { prisma } from "../lib/prisma.js";
 import { getStringParam } from "../utils/getParam.js";
 import { AppError } from "../utils/AppError.js";
 import { hashPassword } from "../utils/password.js";
+import {
+  getProfilePictureUrl,
+  readProfilePicture,
+} from "../services/profilePicture.js";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const users = await prisma.user.findMany({
@@ -13,6 +17,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
       firstName: true,
       lastName: true,
       email: true,
+      profilePicture: true,
       role: true,
       createdAt: true,
     },
@@ -21,7 +26,14 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 
-  res.json(users);
+  res.json(
+    users.map(({ profilePicture, ...user }) => ({
+      ...user,
+      profilePictureUrl: profilePicture
+        ? `/api/users/${encodeURIComponent(user.id)}/profile-picture?v=${encodeURIComponent(profilePicture)}`
+        : null,
+    })),
+  );
 });
 
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
@@ -52,12 +64,17 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
         firstName: true,
         lastName: true,
         email: true,
+        profilePicture: true,
         role: true,
         createdAt: true,
       },
     });
 
-    res.status(201).json(user);
+    const { profilePicture, ...createdUser } = user;
+    res.status(201).json({
+      ...createdUser,
+      profilePictureUrl: getProfilePictureUrl(profilePicture),
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -69,6 +86,32 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
     throw error;
   }
 });
+
+export const getUserProfilePicture = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getStringParam(req.params.id, "user ID");
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { profilePicture: true },
+    });
+
+    if (!user?.profilePicture) {
+      throw new AppError("Profile picture not found", 404);
+    }
+
+    const { image, contentType } = await readProfilePicture(
+      user.profilePicture,
+    );
+
+    res
+      .status(200)
+      .type(contentType)
+      .set("Cache-Control", "private, max-age=31536000, immutable")
+      .set("Cross-Origin-Resource-Policy", "cross-origin")
+      .set("X-Content-Type-Options", "nosniff")
+      .send(image);
+  },
+);
 
 export const getUserById = asyncHandler(async (req: Request, res: Response) => {
   const id = getStringParam(req.params.id, "user ID");
