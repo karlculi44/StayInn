@@ -6,6 +6,7 @@ import { getRoom, getAvailableRooms } from "../../services/room.service";
 import { createReservation } from "../../services/reservation.service";
 import { getRoomTypeImage } from "../../utils/room-image";
 import axios from "axios";
+import { useAuth } from "../../context/useAuth";
 
 type Room = {
   id: string;
@@ -31,6 +32,7 @@ export default function RoomDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [imageErrorRoomId, setImageErrorRoomId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [guests, setGuests] = useState(1);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState("");
@@ -218,6 +220,24 @@ export default function RoomDetails() {
           </p>
 
           <div className="mt-6">
+            {user?.role === "ADMIN" ? (
+              <div className="rounded-2xl bg-cream p-5">
+                <p className="font-semibold">
+                  Admin accounts cannot make guest bookings.
+                </p>
+                <p className="mt-2 text-sm text-muted">
+                  To make a personal reservation, use a separate Guest account.
+                  You can create reservations for guests from the admin workspace.
+                </p>
+                <Link
+                  to="/admin/reservations"
+                  className="mt-4 inline-flex rounded-xl bg-sage px-5 py-3 font-semibold text-white"
+                >
+                  Create a guest reservation
+                </Link>
+              </div>
+            ) : (
+              <>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium">
                 Check-in
@@ -335,6 +355,8 @@ export default function RoomDetails() {
 
             {availabilityError && (
               <p className="mt-3 text-sm text-red-600">{availabilityError}</p>
+            )}
+              </>
             )}
           </div>
         </div>

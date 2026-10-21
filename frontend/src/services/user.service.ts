@@ -26,6 +26,11 @@ export const getUsers = async (): Promise<AdminUser[]> => {
   return response.data;
 };
 
+export const getGuestUsers = async (): Promise<AdminUser[]> => {
+  const response = await api.get<AdminUser[]>("/users/guests");
+  return response.data;
+};
+
 export const getUser = async (id: string) => {
   const response = await api.get(`/users/${id}`);
   return response.data;

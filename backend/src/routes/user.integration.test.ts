@@ -26,14 +26,14 @@ let testRoomId = "";
 let testAdminId = "";
 let accessToken = "";
 
-const createTestUser = async () => {
+const createTestUser = async (role: "GUEST" | "ADMIN" = "GUEST") => {
   const user = await prisma.user.create({
     data: {
       firstName: "Test",
       lastName: "User",
       email: `test-${randomUUID()}@example.com`,
       password: "test-password",
-      role: "GUEST",
+      role,
     },
   });
 
@@ -274,6 +274,28 @@ describe("User management integration tests", () => {
       .get(`/api/users/${user.id}/profile-picture`)
       .set("Cookie", `accessToken=${guestToken}`);
     expect(guestResponse.status).toBe(403);
+  });
+
+  it("returns only guest accounts from the reservation guest-selection endpoint", async () => {
+    const guest = await createTestUser();
+    const admin = await createTestUser("ADMIN");
+
+    const response = await request(app)
+      .get("/api/users/guests")
+      .set("Cookie", `accessToken=${accessToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toContainEqual(
+      expect.objectContaining({ id: guest.id, role: "GUEST" }),
+    );
+    expect(response.body).not.toContainEqual(
+      expect.objectContaining({ id: admin.id }),
+    );
+    expect(
+      response.body.every(
+        (user: { role: string }) => user.role === "GUEST",
+      ),
+    ).toBe(true);
   });
 
   it("allows an admin to create a user with a hashed password and safe response", async () => {

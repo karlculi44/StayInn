@@ -37,6 +37,35 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   );
 });
 
+export const getGuestUsers = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const users = await prisma.user.findMany({
+      where: { role: "GUEST" },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        profilePicture: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    res.json(
+      users.map(({ profilePicture, ...user }) => ({
+        ...user,
+        profilePictureUrl: profilePicture
+          ? `/api/users/${encodeURIComponent(user.id)}/profile-picture?v=${encodeURIComponent(profilePicture)}`
+          : null,
+      })),
+    );
+  },
+);
+
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   const { firstName, lastName, email, password, role } = req.body;
 

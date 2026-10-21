@@ -56,6 +56,7 @@ router.patch(
 router.post(
   "/",
   verifyToken,
+  authorize("GUEST"),
   validate(createReservationSchema),
   createReservation,
 );

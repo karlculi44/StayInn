@@ -236,6 +236,21 @@ describe("Reservation booking integration tests", () => {
     expect(savedReservation.referenceId).toBe(response.body.referenceId);
   });
 
+  it("rejects admin accounts from guest self-service reservation creation", async () => {
+    const response = await request(app)
+      .post("/api/reservations")
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        roomId: testRoomId,
+        checkIn: futureDate(33).toISOString(),
+        checkOut: futureDate(35).toISOString(),
+        guests: 2,
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body.message).toBe("Access denied");
+  });
+
   it("allows an admin to create a reservation for an existing user and calculates the total", async () => {
     const user = await createTestUser();
     const checkIn = futureDate(35);
@@ -285,6 +300,35 @@ describe("Reservation booking integration tests", () => {
 
     expect(response.status).toBe(404);
     expect(response.body.message).toBe("User not found");
+  });
+
+  it("rejects admin reservations for users with the ADMIN role", async () => {
+    const adminGuest = await prisma.user.create({
+      data: {
+        firstName: "Admin",
+        lastName: "Account",
+        email: `reservation-admin-guest-${randomUUID()}@example.com`,
+        password: "test-password",
+        role: "ADMIN",
+      },
+    });
+    createdUserIds.push(adminGuest.id);
+
+    const response = await createAdminReservation(
+      adminGuest.id,
+      futureDate(38),
+      futureDate(40),
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe(
+      "Reservations can only be created for guests",
+    );
+    expect(
+      await prisma.reservation.count({
+        where: { userId: adminGuest.id },
+      }),
+    ).toBe(0);
   });
 
   it("rejects admin reservations for unavailable rooms", async () => {

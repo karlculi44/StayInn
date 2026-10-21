@@ -101,11 +101,15 @@ export const createReservationForUser = async ({
     prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
         where: { id: userId },
-        select: { id: true },
+        select: { id: true, role: true },
       });
 
       if (!user) {
         throw new AppError("User not found", 404);
+      }
+
+      if (user.role !== "GUEST") {
+        throw new AppError("Reservations can only be created for guests", 400);
       }
 
       const lockedRooms = await lockRoomsInOrder(tx, [roomId]);

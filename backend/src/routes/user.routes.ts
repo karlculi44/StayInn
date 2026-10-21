@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createUser,
+  getGuestUsers,
   getUsers,
   getUserById,
   getUserProfilePicture,
@@ -24,6 +25,7 @@ router.post(
   createUser,
 );
 router.get("/", verifyToken, authorize("ADMIN"), getUsers);
+router.get("/guests", verifyToken, authorize("ADMIN"), getGuestUsers);
 router.get(
   "/:id/profile-picture",
   verifyToken,

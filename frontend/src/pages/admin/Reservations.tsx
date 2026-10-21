@@ -13,7 +13,10 @@ import type {
 import ReservationStatusBadge from "../../components/ui/ReservationStatus";
 import { formatCurrency } from "../../utils/format";
 import { getAvailableRooms } from "../../services/room.service";
-import { getUsers, type AdminUser } from "../../services/user.service";
+import {
+  getGuestUsers,
+  type AdminUser,
+} from "../../services/user.service";
 import type { RoomListing } from "../../types";
 import axios from "axios";
 import { createPortal } from "react-dom";
@@ -372,6 +375,15 @@ export default function Reservations() {
     void handleStatusChange(reservation, status);
   };
 
+  const loadGuestUsers = () => {
+    setUserLoadError("");
+    setIsLoadingUsers(true);
+    void getGuestUsers()
+      .then(setUsers)
+      .catch(() => setUserLoadError("Unable to load registered users."))
+      .finally(() => setIsLoadingUsers(false));
+  };
+
   const openCreateForm = () => {
     setEditingReservation(null);
     setGuestSearch("");
@@ -386,12 +398,7 @@ export default function Reservations() {
     setActionError("");
     setSuccessMessage("");
     setIsCreateFormOpen(true);
-    setUserLoadError("");
-    setIsLoadingUsers(true);
-    void getUsers()
-      .then(setUsers)
-      .catch(() => setUserLoadError("Unable to load registered users."))
-      .finally(() => setIsLoadingUsers(false));
+    loadGuestUsers();
   };
 
   const closeCreateForm = () => {
@@ -436,6 +443,7 @@ export default function Reservations() {
     setSuccessMessage("");
     setIsCreateFormOpen(true);
     setIsLoadingRooms(false);
+    loadGuestUsers();
     void loadAvailableRooms(
       reservation.checkIn.slice(0, 10),
       reservation.checkOut.slice(0, 10),
