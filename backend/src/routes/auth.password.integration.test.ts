@@ -112,6 +112,16 @@ describe("Password change session revocation", () => {
       "replacement-test-password",
     );
     expect(wrongCurrentPasswordResponse.status).toBe(401);
+    const unchangedPasswordUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { password: true },
+    });
+    if (!unchangedPasswordUser) {
+      throw new Error("User not found after rejected password change");
+    }
+    expect(
+      await bcrypt.compare(originalPassword, unchangedPasswordUser.password),
+    ).toBe(true);
 
     const invalidNewPasswordResponse = await changePassword(
       session.accessToken,

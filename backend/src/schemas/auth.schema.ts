@@ -15,6 +15,11 @@ export const loginSchema = z.object({
 export const updateProfileSchema = z.object({
   firstName: z.string().min(1, "First name is required").optional(),
   lastName: z.string().min(1, "Last name is required").optional(),
+  email: z
+    .string()
+    .trim()
+    .pipe(z.email("Invalid email address"))
+    .optional(),
 });
 
 export const changePasswordSchema = z.object({

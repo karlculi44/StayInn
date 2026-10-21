@@ -35,10 +35,18 @@ export const getMe = async () => {
 export const updateMyProfile = async (profile: {
   firstName: string;
   lastName: string;
+  email: string;
 }): Promise<User> => {
   const response = await api.patch<User>("/auth/me", profile);
 
   return response.data;
+};
+
+export const changeMyPassword = async (
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  await api.patch("/auth/me/password", { currentPassword, newPassword });
 };
 
 export const logout = async () => {

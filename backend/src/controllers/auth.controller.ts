@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
@@ -158,25 +159,48 @@ export const updateProfile = asyncHandler(
       throw new AppError("Authentication required", 401);
     }
 
-    const { firstName, lastName } = req.body;
+    const { firstName, lastName, email } = req.body;
 
     const { userId } = req.user;
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        firstName,
-        lastName,
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    if (email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        throw new AppError("Email unavailable", 409);
+      }
+    }
+
+    const user = await prisma.user
+      .update({
+        where: { id: userId },
+        data: {
+          firstName,
+          lastName,
+          email,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new AppError("Email unavailable", 409);
+        }
+
+        throw error;
+      });
 
     res.json(user);
   },

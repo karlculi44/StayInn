@@ -5,9 +5,13 @@ import { Button } from "../../components/ui/Button";
 import {
   adminRaisedDark,
   adminRaisedLight,
+  adminRaisedSage,
 } from "../../components/ui/adminButtonStyles";
 import { useAuth } from "../../context/useAuth";
-import { updateMyProfile } from "../../services/auth.services";
+import {
+  changeMyPassword,
+  updateMyProfile,
+} from "../../services/auth.services";
 
 export default function Profile({ showLogout = true }: { showLogout?: boolean }) {
   const { user, logout, setUser } = useAuth();
@@ -15,9 +19,16 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -30,6 +41,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
 
     setFirstName(user.firstName);
     setLastName(user.lastName);
+    setEmail(user.email);
     setError("");
     setSuccessMessage("");
     setIsEditing(true);
@@ -50,6 +62,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
       const updatedUser = await updateMyProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        email: email.trim(),
       });
       setUser(updatedUser);
       setIsEditing(false);
@@ -72,6 +85,52 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
       }
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function closePasswordModal() {
+    setIsPasswordModalOpen(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+  }
+
+  async function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("The new passwords do not match.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordError("");
+
+    try {
+      await changeMyPassword(currentPassword, newPassword);
+      closePasswordModal();
+      setSuccessMessage("Your password was updated successfully.");
+    } catch (changeError: unknown) {
+      if (axios.isAxiosError(changeError)) {
+        const responseData = changeError.response?.data as
+          | {
+              message?: string;
+              errors?: Record<string, string[] | undefined>;
+            }
+          | undefined;
+        setPasswordError(
+          Object.values(responseData?.errors ?? {}).flat()[0] ??
+            responseData?.message ??
+            "Unable to update your password.",
+        );
+      } else {
+        setPasswordError(
+          "An unexpected error occurred while updating your password.",
+        );
+      }
+    } finally {
+      setIsChangingPassword(false);
     }
   }
 
@@ -137,12 +196,19 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
                   onChange={(event) => setLastName(event.target.value)}
                 />
               </label>
+              <label className="block text-sm font-medium text-ink sm:col-span-2">
+                Email address
+                <input
+                  type="email"
+                  autoComplete="email"
+                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
             </div>
             <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <p className="text-sm text-muted">Email address</p>
-                <p className="mt-1 font-semibold text-ink">{user.email}</p>
-              </div>
               <div>
                 <p className="text-sm text-muted">Account type</p>
                 <p className="mt-1 font-semibold text-ink">
@@ -205,9 +271,121 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
             >
               Edit profile
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className={`mt-6 ml-3 ${!showLogout ? adminRaisedSage : ""}`}
+              onClick={() => {
+                setPasswordError("");
+                setSuccessMessage("");
+                setIsPasswordModalOpen(true);
+              }}
+            >
+              Update password
+            </Button>
           </>
         )}
       </section>
+
+      {isPasswordModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !isChangingPassword
+            ) {
+              closePasswordModal();
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-password-title"
+            className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl sm:p-7"
+          >
+            <h2
+              id="change-password-title"
+              className="font-display text-2xl"
+            >
+              Update password
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Enter your current password to verify your identity.
+            </p>
+
+            {passwordError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                {passwordError}
+              </p>
+            )}
+
+            <form className="mt-5 space-y-4" onSubmit={handlePasswordChange}>
+              <label className="block text-sm font-medium text-ink">
+                Current password
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
+                  required
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm font-medium text-ink">
+                New password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
+                  required
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                />
+                <span className="mt-1 block text-xs text-muted">
+                  Must be at least 8 characters.
+                </span>
+              </label>
+              <label className="block text-sm font-medium text-ink">
+                Confirm new password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
+                  required
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                />
+              </label>
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isChangingPassword}
+                  onClick={closePasswordModal}
+                  className={!showLogout ? adminRaisedLight : ""}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className={!showLogout ? adminRaisedDark : ""}
+                >
+                  {isChangingPassword ? "Updating..." : "Update password"}
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {showLogout && (
         <Button
