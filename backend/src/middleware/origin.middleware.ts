@@ -18,7 +18,10 @@ export function verifyRequestOrigin(
   if (
     !isRequestOriginAllowed(
       req.get("Origin"),
-      env.FRONTEND_URL,
+      [
+        env.FRONTEND_URL,
+        ...(env.LAN_FRONTEND_URL ? [env.LAN_FRONTEND_URL] : []),
+      ],
       env.NODE_ENV,
     )
   ) {

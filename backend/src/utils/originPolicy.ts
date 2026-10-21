@@ -29,12 +29,17 @@ export function isTrustedOrigin(
 
 export function isRequestOriginAllowed(
   origin: string | undefined,
-  frontendOrigin: string,
+  frontendOrigins: string | readonly string[],
   nodeEnv: Environment["NODE_ENV"],
 ): boolean {
   if (origin === undefined) {
     return nodeEnv !== "production";
   }
 
-  return isTrustedOrigin(origin, frontendOrigin);
+  const allowedOrigins =
+    typeof frontendOrigins === "string" ? [frontendOrigins] : frontendOrigins;
+
+  return allowedOrigins.some((frontendOrigin) =>
+    isTrustedOrigin(origin, frontendOrigin),
+  );
 }

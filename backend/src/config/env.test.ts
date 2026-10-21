@@ -21,7 +21,9 @@ describe("parseEnv", () => {
 
     expect(environment.NODE_ENV).toBe("development");
     expect(environment.FRONTEND_URL).toBe("http://localhost:5173");
+    expect(environment.LAN_FRONTEND_URL).toBeUndefined();
     expect(environment.PORT).toBe(5000);
+    expect(environment.HOST).toBe("127.0.0.1");
   });
 
   it("parses valid test configuration with the development frontend default", () => {
@@ -33,6 +35,23 @@ describe("parseEnv", () => {
 
     expect(environment.NODE_ENV).toBe("test");
     expect(environment.FRONTEND_URL).toBe("http://localhost:5173");
+  });
+
+  it("accepts an optional LAN frontend origin and network bind host", () => {
+    const environment = parseEnv({
+      ...validEnvironment,
+      LAN_FRONTEND_URL: "http://192.168.1.25:5173",
+      HOST: "0.0.0.0",
+    });
+
+    expect(environment.LAN_FRONTEND_URL).toBe("http://192.168.1.25:5173");
+    expect(environment.HOST).toBe("0.0.0.0");
+  });
+
+  it("rejects invalid bind hosts", () => {
+    expect(() =>
+      parseEnv({ ...validEnvironment, HOST: "192.168.1.25" }),
+    ).toThrow("HOST");
   });
 
   it("requires NODE_ENV to be explicit", () => {
@@ -152,6 +171,20 @@ describe("parseEnv", () => {
     });
 
     expect(environment.NODE_ENV).toBe("production");
+    expect(environment.HOST).toBe("0.0.0.0");
+  });
+
+  it("rejects LAN frontend origins in production", () => {
+    expect(() =>
+      parseEnv({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        FRONTEND_URL: "https://stayinn.example",
+        LAN_FRONTEND_URL: "http://192.168.1.25:5173",
+        JWT_ACCESS_TOKEN_SECRET: "a".repeat(32),
+        JWT_REFRESH_TOKEN_SECRET: "b".repeat(32),
+      }),
+    ).toThrow("LAN_FRONTEND_URL");
   });
 
   it("rejects an unsupported NODE_ENV", () => {

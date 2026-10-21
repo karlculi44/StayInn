@@ -21,7 +21,9 @@ const testEnvironmentKeys = [
   "JWT_ACCESS_TOKEN_SECRET",
   "JWT_REFRESH_TOKEN_SECRET",
   "FRONTEND_URL",
+  "LAN_FRONTEND_URL",
   "PORT",
+  "HOST",
 ] as const;
 
 const originalEnvironment = new Map<
@@ -41,7 +43,9 @@ describe("server configuration bootstrap", () => {
     process.env.JWT_ACCESS_TOKEN_SECRET = "stayinn-test-access-secret";
     process.env.JWT_REFRESH_TOKEN_SECRET = "stayinn-test-refresh-secret";
     process.env.FRONTEND_URL = "http://localhost:5173";
+    delete process.env.LAN_FRONTEND_URL;
     process.env.PORT = "5000";
+    delete process.env.HOST;
 
     appLoaded.mockClear();
     cleanupLoaded.mockClear();
@@ -66,6 +70,8 @@ describe("server configuration bootstrap", () => {
     expect(appLoaded).toHaveBeenCalledOnce();
     expect(cleanupLoaded).toHaveBeenCalledOnce();
     expect(listen).not.toHaveBeenCalled();
+    server.startServer();
+    expect(listen).toHaveBeenCalledWith(5000, "127.0.0.1", expect.any(Function));
   });
 
   it("rejects invalid configuration before loading the app or Prisma cleanup", async () => {

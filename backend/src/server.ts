@@ -6,7 +6,7 @@ import app from "./app.js";
 import { cleanupRefreshTokens } from "./utils/cleanupRefreshTokens.js";
 
 export function startServer(): void {
-  app.listen(env.PORT, () => {
+  app.listen(env.PORT, env.HOST, () => {
     console.log(`StayInn server running on port ${env.PORT}`);
 
     cleanupRefreshTokens().catch((error) => {

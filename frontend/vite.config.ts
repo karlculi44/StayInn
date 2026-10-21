@@ -9,6 +9,7 @@ export default defineConfig(({ mode, command }) => {
   validateApiUrl(
     environment.VITE_API_URL,
     mode === "production" || command === "build",
+    mode === "lan",
   );
 
   return {

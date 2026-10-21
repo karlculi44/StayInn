@@ -40,6 +40,8 @@ const portSchema = z
   .optional()
   .transform((value) => value ?? 5000);
 
+const hostSchema = z.enum(["127.0.0.1", "0.0.0.0"]).optional();
+
 const minimumProductionJwtSecretLength = 32;
 const knownJwtSecretPlaceholders = new Set([
   "replace-with-a-random-local-only-access-secret",
@@ -59,9 +61,21 @@ const environmentSchema = z
     JWT_ACCESS_TOKEN_SECRET: z.string().min(1),
     JWT_REFRESH_TOKEN_SECRET: z.string().min(1),
     FRONTEND_URL: frontendOriginSchema.optional(),
+    LAN_FRONTEND_URL: frontendOriginSchema.optional(),
     PORT: portSchema,
+    HOST: hostSchema,
   })
   .superRefine((environment, context) => {
+    if (
+      environment.NODE_ENV === "production" &&
+      environment.LAN_FRONTEND_URL !== undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["LAN_FRONTEND_URL"],
+      });
+    }
+
     if (environment.NODE_ENV !== "production") {
       return;
     }
@@ -116,6 +130,9 @@ const environmentSchema = z
   .transform((environment) => ({
     ...environment,
     FRONTEND_URL: environment.FRONTEND_URL ?? "http://localhost:5173",
+    HOST:
+      environment.HOST ??
+      (environment.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1"),
   }));
 
 export type Environment = z.output<typeof environmentSchema>;

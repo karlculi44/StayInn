@@ -80,9 +80,32 @@ function isLocalHostname(hostname: string): boolean {
     .some((suffix) => normalizedHostname.endsWith(suffix));
 }
 
+function isLoopbackHostname(hostname: string): boolean {
+  const normalizedHostname = hostname.toLowerCase().replace(/\.$/, "");
+
+  if (
+    normalizedHostname === "localhost" ||
+    normalizedHostname.endsWith(".localhost") ||
+    normalizedHostname === "0.0.0.0" ||
+    normalizedHostname === "::" ||
+    normalizedHostname === "[::]" ||
+    normalizedHostname === "[::1]"
+  ) {
+    return true;
+  }
+
+  const octets = normalizedHostname.split(".");
+  return (
+    octets.length === 4 &&
+    octets.every((octet) => /^\d{1,3}$/.test(octet) && Number(octet) <= 255) &&
+    Number(octets[0]) === 127
+  );
+}
+
 export function validateApiUrl(
   value: string | undefined,
   production: boolean,
+  lanMode = false,
 ): string {
   if (!value?.trim()) {
     throw new Error("VITE_API_URL is required.");
@@ -112,6 +135,12 @@ export function validateApiUrl(
 
   if (production && url.protocol !== "https:") {
     throw new Error("VITE_API_URL must use HTTPS in production.");
+  }
+
+  if (lanMode && isLoopbackHostname(url.hostname)) {
+    throw new Error(
+      "VITE_API_URL must use the computer's LAN address in LAN mode.",
+    );
   }
 
   return value;

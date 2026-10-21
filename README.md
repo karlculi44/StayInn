@@ -37,6 +37,8 @@ Start the development server:
 npm run dev
 ```
 
+The backend reads `backend\.env`. `HOST` defaults to `127.0.0.1` in development and `0.0.0.0` in production. `PORT` defaults to `5000`. PostgreSQL remains configured by `DATABASE_URL` and is accessed only by the backend.
+
 The seed file is `prisma/seed.ts`; it is not configured as an npm or Prisma seed command. If sample data is needed, run it explicitly from `backend` with `NODE_ENV=development` and `DATABASE_URL` pointing only to the local development database:
 
 ```powershell
@@ -56,9 +58,9 @@ npm test
 
 The test setup validates `TEST_DATABASE_URL` before assigning it as `DATABASE_URL` for test modules.
 
-## Frontend
+## Frontend: local development
 
-In a separate terminal, from the repository root:
+The local frontend is served only on this computer at `http://localhost:5173`. In a separate terminal, from the repository root:
 
 ```powershell
 Set-Location frontend
@@ -66,7 +68,52 @@ npm ci
 npm run dev
 ```
 
-`frontend\.env` supplies `VITE_API_URL`. The value is public frontend configuration, not a place for secrets. The Vite config validates it at startup and build time; production builds reject local and private API hosts and require HTTPS.
+`frontend\.env` supplies `VITE_API_URL`, normally `http://localhost:5000/api`. This is public frontend configuration, not a place for secrets.
+
+## LAN testing
+
+LAN mode binds the Vite development server and backend to network interfaces so other computers on the same reachable office network can connect. PostgreSQL stays on the development computer and must not be exposed to the LAN.
+
+1. Find this computer's office-network IPv4 address with `ipconfig`. Use the IPv4 address for the active office network adapter, not a VPN, virtual adapter, or loopback address.
+2. Create the LAN frontend environment file and edit it:
+
+   ```powershell
+   Copy-Item frontend\.env.lan.example frontend\.env.lan
+   notepad frontend\.env.lan
+   ```
+
+   Replace `YOUR-LAN-IP` in `VITE_API_URL=http://YOUR-LAN-IP:5000/api` with the IPv4 address from step 1. The `.env.lan` file is local-only and ignored by Git. Vite's `lan` mode explicitly loads it; the LAN startup fails if it still points at localhost.
+3. Edit the existing `backend\.env` without replacing its database URL or JWT secrets. Set the following values, using the same IPv4 address:
+
+   ```dotenv
+   HOST=0.0.0.0
+   LAN_FRONTEND_URL=http://YOUR-LAN-IP:5173
+   ```
+
+   Keep `FRONTEND_URL=http://localhost:5173` so local development remains allowed too. `LAN_FRONTEND_URL` is an additional exact origin, not a wildcard. Do not add it to production configuration.
+4. In one terminal, start or restart the backend:
+
+   ```powershell
+   Set-Location backend
+   npm run dev
+   ```
+5. In another terminal, start the LAN frontend:
+
+   ```powershell
+   Set-Location frontend
+   npm run dev:lan
+   ```
+6. Coworkers on the same reachable office network should open `http://YOUR-LAN-IP:5173`, replacing the placeholder with the same IPv4 address.
+
+After changing the computer's LAN IP, update both `frontend\.env.lan` and `LAN_FRONTEND_URL` in `backend\.env`, then restart the frontend and backend. Restart the backend after changing `HOST` or `LAN_FRONTEND_URL`; restart Vite after changing `frontend\.env.lan`. Backend CORS and state-changing request checks allow only the configured local and LAN frontend origins. Cookie-based authentication continues to use credentialed requests and development `HttpOnly`, `SameSite=Lax` cookies; no production cookie settings are relaxed.
+
+LAN mode uses plain HTTP, which does not encrypt credentials or session traffic. Use it only on a trusted office network with test accounts and non-sensitive data. Before testing, confirm coworkers are on the same reachable network and the IPv4 address is correct. Windows Firewall may need inbound TCP access to ports **5173** (frontend) and **5000** (backend); if rules are required, limit them to the trusted **Private** network profile and office network. Do not disable the firewall or open PostgreSQL's port.
+
+Troubleshooting:
+
+- **Connection refused / page unavailable:** verify both servers are running, Vite reports port `5173`, the backend reports port `5000`, the IP is current, and `HOST=0.0.0.0` is set before restarting the backend.
+- **CORS or invalid-origin errors:** make sure `LAN_FRONTEND_URL` exactly matches `http://YOUR-LAN-IP:5173` and `VITE_API_URL` uses `http://YOUR-LAN-IP:5000/api`, then restart both servers. Do not add a trailing path or use a wildcard origin.
+- **Login/session issues:** use the frontend URL with the same LAN IP configured in both files, ensure the browser allows cookies, and verify requests use the API URL with `http://` and port `5000`. The LAN HTTP setup is for trusted-network testing only.
 
 ## Production configuration
 
@@ -77,12 +124,13 @@ Provide backend settings through the deployment environment or a secrets manager
 - distinct, strong `JWT_ACCESS_TOKEN_SECRET` and `JWT_REFRESH_TOKEN_SECRET` values
 - `FRONTEND_URL` set to the deployed frontend origin
 - `PORT` if required by the hosting platform
+- `HOST` if required by the hosting platform (defaults to `0.0.0.0` in production)
 
 Generate separate cryptographically random JWT secrets (for example, run `openssl rand -hex 32` twice) and set each result as its corresponding secret in the deployment provider. Production startup requires both secrets to be at least 32 characters, rejects known placeholders, and rejects identical values. The 32-character minimum is a conservative length floor; generating 32 random bytes provides 256 bits of entropy. Do not paste secret values into source control, logs, or frontend `VITE_` settings.
 
-Set `VITE_API_URL` to the deployed backend API base URL before building the frontend. Use the public HTTPS API URL; production frontend builds reject plain HTTP, localhost, loopback, private, and local-only hosts. Local development can continue using the documented HTTP URL. Do not place backend secrets in any `VITE_` variable.
+Set `VITE_API_URL` to the deployed backend API base URL before building the frontend, through the deployment environment or a production-specific Vite environment file. Use the public HTTPS API URL; production frontend builds reject plain HTTP, localhost, loopback, private, and local-only hosts. Local and LAN development use their separate documented HTTP URLs. Do not place backend secrets in any `VITE_` variable.
 
-The browser frontend and backend may be hosted on different sites. Production auth cookies therefore use `HttpOnly`, `Secure`, `SameSite=None`, and `Path=/`; the server also requires the configured `FRONTEND_URL` as the exact `Origin` on state-changing requests. Missing origins are allowed only in development and automated tests; malformed, `null`, and untrusted origins on state-changing requests are rejected in every environment. Safe `GET`/`HEAD` requests and CORS preflight requests are not blocked by the Origin middleware. CORS remains restricted to the configured frontend origin. Browser third-party-cookie restrictions may still prevent cross-site cookie authentication in some environments.
+The browser frontend and backend may be hosted on different sites. Production auth cookies therefore use `HttpOnly`, `Secure`, `SameSite=None`, and `Path=/`; the server also requires the configured `FRONTEND_URL` as the exact `Origin` on state-changing requests. `LAN_FRONTEND_URL` is rejected in production. Missing origins are allowed only in development and automated tests; malformed, `null`, and untrusted origins on state-changing requests are rejected in every environment. Safe `GET`/`HEAD` requests and CORS preflight requests are not blocked by the Origin middleware. CORS remains restricted to the configured frontend origin(s). Browser third-party-cookie restrictions may still prevent cross-site cookie authentication in some environments.
 
 The backend production build generates the Prisma client and compiles runtime sources into `backend/dist`; `npm start` runs `dist/server.js`.
 

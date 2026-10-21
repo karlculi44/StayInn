@@ -11,6 +11,18 @@ describe("request Origin policy", () => {
     expect(isTrustedOrigin(trustedOrigin, trustedOrigin)).toBe(true);
   });
 
+  it("allows only exact matches from configured frontend origins", () => {
+    const lanOrigin = "http://192.168.1.25:5173";
+    const allowedOrigins = [trustedOrigin, lanOrigin];
+
+    expect(
+      isRequestOriginAllowed(lanOrigin, allowedOrigins, "development"),
+    ).toBe(true);
+    expect(
+      isRequestOriginAllowed("http://192.168.1.26:5173", allowedOrigins, "development"),
+    ).toBe(false);
+  });
+
   it("rejects an untrusted origin without suffix matching", () => {
     expect(
       isTrustedOrigin("https://stayinn.example.attacker.test", trustedOrigin),
