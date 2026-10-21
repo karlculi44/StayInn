@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import { getRooms } from "../../services/room.service";
 import type { RoomListing } from "../../types";
 import { formatCurrency } from "../../utils/format";
@@ -13,6 +20,7 @@ export default function Rooms() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
 
   useEffect(() => {
     let isMounted = true;
@@ -44,6 +52,23 @@ export default function Rooms() {
     };
   }, [retryCount]);
 
+  const roomTypes = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          rooms.map((room) => [room.roomType.id, room.roomType.name]),
+        ).entries(),
+      ),
+    [rooms],
+  );
+  const filteredRooms = useMemo(
+    () =>
+      roomTypeFilter === "ALL"
+        ? rooms
+        : rooms.filter((room) => room.roomType.id === roomTypeFilter),
+    [rooms, roomTypeFilter],
+  );
+
   const roomStatuses = {
     AVAILABLE: { label: "Available", styles: "bg-sage/10 text-sage" },
     MAINTENANCE: {
@@ -63,6 +88,29 @@ export default function Rooms() {
       <p className="mt-5 max-w-xl text-muted">
         Browse our rooms and find the right fit for your stay.
       </p>
+      {!isLoading && !hasError && rooms.length > 0 && (
+        <div className="mt-6 max-w-xs">
+          <label
+            htmlFor="public-room-type-filter"
+            className="mb-2 block text-sm font-medium"
+          >
+            Room type
+          </label>
+          <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+            <SelectTrigger id="public-room-type-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All room types</SelectItem>
+              {roomTypes.map(([id, name]) => (
+                <SelectItem key={id} value={id}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       {isLoading && (
         <div className="mt-10">
           <Loading label="Loading rooms..." />
@@ -82,17 +130,21 @@ export default function Rooms() {
           </div>
         </div>
       )}
-      {!isLoading && !hasError && rooms.length === 0 && (
+      {!isLoading && !hasError && filteredRooms.length === 0 && (
         <div className="mt-10">
           <EmptyState
-            title="No rooms to display"
-            message="Please check back later for room listings."
+            title={rooms.length === 0 ? "No rooms to display" : "No matching rooms"}
+            message={
+              rooms.length === 0
+                ? "Please check back later for room listings."
+                : "Try selecting a different room type."
+            }
           />
         </div>
       )}
-      {!isLoading && !hasError && rooms.length > 0 && (
+      {!isLoading && !hasError && filteredRooms.length > 0 && (
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {rooms.map((room) => {
+          {filteredRooms.map((room) => {
             const status = roomStatuses[room.status];
             const image = getRoomTypeImage(
               room.roomType.name,

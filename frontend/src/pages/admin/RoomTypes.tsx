@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   getRoomTypes,
   createRoomType,
   updateRoomType,
   deleteRoomType,
 } from "../../services/room-type.service";
-import { ErrorState } from "../../components/ui/States";
+import { ErrorState, Loading } from "../../components/ui/States";
+import DataTable from "../../components/ui/DataTable";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import axios from "axios";
 import {
@@ -42,6 +44,7 @@ export default function RoomTypes() {
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchRoomTypes = async () => {
@@ -195,6 +198,83 @@ export default function RoomTypes() {
     }
   };
 
+  const roomTypeColumns = useMemo<ColumnDef<RoomType, unknown>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <span className="font-semibold text-ink">
+            {row.original.name}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "description",
+        header: "Description",
+        meta: { className: "min-w-64 text-muted" },
+      },
+      {
+        accessorKey: "capacity",
+        header: "Capacity",
+        cell: ({ row }) => `${row.original.capacity} guests`,
+        meta: { className: "whitespace-nowrap" },
+      },
+      {
+        id: "pricePerNight",
+        accessorFn: (roomType) => Number(roomType.pricePerNight),
+        header: "Price per Night",
+        cell: ({ row }) =>
+          `₱${Number(row.original.pricePerNight).toLocaleString()}`,
+        meta: { className: "whitespace-nowrap" },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const roomType = row.original;
+          return (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingRoomTypeId(roomType.id);
+                  setName(roomType.name);
+                  setDescription(roomType.description);
+                  setCapacity(roomType.capacity);
+                  setPricePerNight(String(roomType.pricePerNight));
+                  setFormError("");
+                  setIsFormOpen(true);
+                }}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${adminRaisedSage}`}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoomTypeToDelete(roomType)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${adminRaisedDanger}`}
+              >
+                Delete
+              </button>
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+    ],
+    [],
+  );
+  const filteredRoomTypes = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return roomTypes.filter(
+      (roomType) =>
+        !query ||
+        roomType.name.toLowerCase().includes(query) ||
+        roomType.description.toLowerCase().includes(query),
+    );
+  }, [roomTypes, searchTerm]);
+
   return (
     <div>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
@@ -326,7 +406,9 @@ export default function RoomTypes() {
       )}
 
       {isLoading && (
-        <p className="mt-8 text-sm text-muted">Loading room types...</p>
+        <div className="mt-8">
+          <Loading label="Loading room types..." />
+        </div>
       )}
 
       {error && (
@@ -336,70 +418,36 @@ export default function RoomTypes() {
       )}
 
       {!isLoading && !error && (
-        <div className="mt-8 overflow-hidden rounded-2xl bg-white">
+        <div className="mt-8">
           {actionError && (
             <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
               {actionError}
             </p>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">Description</th>
-                  <th className="px-6 py-4">Capacity</th>
-                  <th className="px-6 py-4">Price per Night</th>
-                  <th className="px-6 py-4">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {roomTypes.map((roomType) => (
-                  <tr key={roomType.id} className="border-b last:border-b-0">
-                    <td className="px-6 py-4 font-semibold">{roomType.name}</td>
-
-                    <td className="px-6 py-4">{roomType.description}</td>
-
-                    <td className="px-6 py-4">{roomType.capacity} guests</td>
-
-                    <td className="px-6 py-4">
-                      ₱{Number(roomType.pricePerNight).toLocaleString()}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingRoomTypeId(roomType.id);
-                          setName(roomType.name);
-                          setDescription(roomType.description);
-                          setCapacity(roomType.capacity);
-                          setPricePerNight(String(roomType.pricePerNight));
-                          setFormError("");
-                          setIsFormOpen(true);
-                        }}
-                        className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${adminRaisedSage}`}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setRoomTypeToDelete(roomType)
-                        }
-                        className={`ml-3 rounded-lg px-3 py-1.5 text-sm font-medium ${adminRaisedDanger}`}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-4 rounded-2xl border border-black/10 bg-white p-4">
+            <label htmlFor="room-types-search" className="text-sm font-medium">
+              Search room types
+            </label>
+            <input
+              id="room-types-search"
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by name or description"
+              className="mt-2 w-full rounded-xl border px-4 py-3"
+            />
           </div>
+          <DataTable
+            columns={roomTypeColumns}
+            data={filteredRoomTypes}
+            emptyMessage={
+              roomTypes.length === 0
+                ? "No room types have been added yet."
+                : "No room types match your search."
+            }
+            tableClassName="min-w-[48rem]"
+          />
         </div>
       )}
       <ConfirmDeleteModal

@@ -13,6 +13,13 @@ import type {
 import { ErrorState, Loading } from "../../components/ui/States";
 import ReservationStatusBadge from "../../components/ui/ReservationStatus";
 import { formatCurrency } from "../../utils/format";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
 const reservationStatuses: ReservationStatus[] = [
   "PENDING",
@@ -170,24 +177,33 @@ export default function Calendar() {
             View guest stays and room bookings by date.
           </p>
         </div>
-        <label className="text-sm font-medium">
-          Reservation status
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as "ALL" | ReservationStatus)
-            }
-            className="ml-3 rounded-xl border border-black/10 bg-white px-3 py-2"
+        <div className="min-w-48">
+          <label
+            htmlFor="calendar-status-filter"
+            className="mb-2 block text-sm font-medium"
           >
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status === "ALL"
-                  ? "All statuses"
-                  : status.charAt(0) + status.slice(1).toLowerCase()}
-              </option>
-            ))}
-          </select>
-        </label>
+            Reservation status
+          </label>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) =>
+              setStatusFilter(value as "ALL" | ReservationStatus)
+            }
+          >
+            <SelectTrigger id="calendar-status-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status === "ALL"
+                    ? "All statuses"
+                    : status.charAt(0) + status.slice(1).toLowerCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div

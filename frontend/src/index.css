@@ -89,6 +89,13 @@
   }
 }
 
+@keyframes ui-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
 .chart-tooltip-fade {
   animation: chart-tooltip-fade-in 120ms ease-out;
   transition: opacity 120ms ease-out;
@@ -96,6 +103,10 @@
 
 .animate-ui-enter {
   animation: ui-enter 160ms ease-out both;
+}
+
+.animate-ui-exit {
+  animation: ui-exit 110ms ease-in both;
 }
 
 @layer base {

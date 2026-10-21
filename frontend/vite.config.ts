@@ -18,5 +18,13 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    optimizeDeps: {
+      include: [
+        "@radix-ui/react-dropdown-menu",
+        "@radix-ui/react-popover",
+        "@radix-ui/react-select",
+        "cmdk",
+      ],
+    },
   };
 });

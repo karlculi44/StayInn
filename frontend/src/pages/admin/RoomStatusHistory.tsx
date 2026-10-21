@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   getRoomStatusHistory,
   type RoomStatus,
   type RoomStatusHistoryEntry,
 } from "../../services/roomStatusHistory.service";
-import { ErrorState } from "../../components/ui/States";
+import { ErrorState, Loading } from "../../components/ui/States";
+import DataTable from "../../components/ui/DataTable";
 import { adminRaisedLight } from "../../components/ui/adminButtonStyles";
 
 const statusStyles: Record<RoomStatus, string> = {
@@ -38,6 +40,7 @@ export default function RoomStatusHistory() {
   const [error, setError] = useState("");
   const [selectedEntry, setSelectedEntry] =
     useState<RoomStatusHistoryEntry | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -72,8 +75,97 @@ export default function RoomStatusHistory() {
     };
   }, [selectedEntry]);
 
+  const historyColumns = useMemo<
+    ColumnDef<RoomStatusHistoryEntry, unknown>[]
+  >(
+    () => [
+      {
+        id: "room",
+        accessorFn: (entry) => entry.room?.roomNumber ?? "Deleted room",
+        header: "Room",
+        cell: ({ row }) =>
+          row.original.room ? (
+            <span className="font-semibold text-ink">
+              {row.original.room.roomNumber}
+            </span>
+          ) : (
+            <span className="text-muted">Deleted room</span>
+          ),
+      },
+      {
+        accessorKey: "previousStatus",
+        header: "Previous Status",
+        cell: ({ row }) => (
+          <StatusBadge status={row.original.previousStatus} />
+        ),
+      },
+      {
+        accessorKey: "newStatus",
+        header: "New Status",
+        cell: ({ row }) => <StatusBadge status={row.original.newStatus} />,
+      },
+      {
+        accessorKey: "reason",
+        header: "Reason",
+        cell: ({ row }) => (
+          <button
+            type="button"
+            onClick={() => setSelectedEntry(row.original)}
+            title={row.original.reason}
+            className="block max-w-[20rem] truncate text-left text-sage hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+          >
+            {row.original.reason}
+          </button>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "changedBy",
+        accessorFn: (entry) =>
+          entry.admin
+            ? `${entry.admin.firstName} ${entry.admin.lastName}`.trim()
+            : "Unknown administrator",
+        header: "Changed By",
+        cell: ({ row }) =>
+          row.original.admin ? (
+            `${row.original.admin.firstName} ${row.original.admin.lastName}`.trim()
+          ) : (
+            <span className="text-muted">Unknown administrator</span>
+          ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: "Date and Time",
+        cell: ({ row }) => formatDateTime(row.original.createdAt),
+        meta: { className: "whitespace-nowrap text-muted" },
+      },
+    ],
+    [],
+  );
+  const filteredHistory = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) {
+      return history;
+    }
+
+    return history.filter((entry) =>
+      [
+        entry.room?.roomNumber ?? "Deleted room",
+        entry.previousStatus,
+        entry.newStatus,
+        entry.reason,
+        entry.admin
+          ? `${entry.admin.firstName} ${entry.admin.lastName}`
+          : "Unknown administrator",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [history, searchTerm]);
+
   if (isLoading) {
-    return <p className="p-6 text-gray-500">Loading room status history...</p>;
+    return <Loading label="Loading room status history..." />;
   }
 
   if (error) {
@@ -92,68 +184,29 @@ export default function RoomStatusHistory() {
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="px-6 py-4 font-medium">Room</th>
-              <th className="px-6 py-4 font-medium">Previous Status</th>
-              <th className="px-6 py-4 font-medium">New Status</th>
-              <th className="px-6 py-4 font-medium">Reason</th>
-              <th className="px-6 py-4 font-medium">Changed By</th>
-              <th className="px-6 py-4 font-medium">Date and Time</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-100">
-            {history.map((entry) => (
-              <tr key={entry.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">
-                  {entry.room ? (
-                    entry.room.roomNumber
-                  ) : (
-                    <span className="text-gray-500">Deleted room</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={entry.previousStatus} />
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={entry.newStatus} />
-                </td>
-                <td className="min-w-64 px-6 py-4 text-gray-600">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedEntry(entry)}
-                    title={entry.reason}
-                    className="block max-w-[20rem] truncate text-left text-sage hover:underline focus-visible:outline-none focus-visible:underline"
-                  >
-                    {entry.reason}
-                  </button>
-                </td>
-                <td className="px-6 py-4 text-gray-600">
-                  {entry.admin ? (
-                    `${entry.admin.firstName} ${entry.admin.lastName}`.trim()
-                  ) : (
-                    <span className="text-gray-500">Unknown administrator</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-6 py-4 text-gray-600">
-                  {formatDateTime(entry.createdAt)}
-                </td>
-              </tr>
-            ))}
-
-            {history.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No room status changes have been recorded yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="rounded-2xl border border-black/10 bg-white p-4">
+        <label htmlFor="room-history-search" className="text-sm font-medium">
+          Search history
+        </label>
+        <input
+          id="room-history-search"
+          type="search"
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Search room, status, reason, or administrator"
+          className="mt-2 w-full rounded-xl border px-4 py-3"
+        />
       </div>
+      <DataTable
+        columns={historyColumns}
+        data={filteredHistory}
+        emptyMessage={
+          history.length === 0
+            ? "No room status changes have been recorded yet."
+            : "No history entries match your search."
+        }
+        tableClassName="min-w-[54rem]"
+      />
 
       {selectedEntry && (
         <div

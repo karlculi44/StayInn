@@ -21,6 +21,13 @@ import {
   adminRaisedDark,
   adminRaisedLight,
 } from "../../components/ui/adminButtonStyles";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
 const statusTransitions: Record<ReservationStatus, ReservationStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -515,25 +522,36 @@ export default function ReservationDetails() {
                   <label htmlFor="details-room" className="text-sm font-medium">
                     Available room
                   </label>
-                  <select
-                    id="details-room"
-                    value={selectedRoomId}
-                    onChange={(event) => setSelectedRoomId(event.target.value)}
+                  <Select
+                    value={selectedRoomId || "__none__"}
+                    onValueChange={(value) =>
+                      setSelectedRoomId(value === "__none__" ? "" : value)
+                    }
                     disabled={isLoadingRooms}
-                    className="mt-2 w-full rounded-xl border px-4 py-3 disabled:bg-black/5"
                   >
-                    <option value="">
-                      {isLoadingRooms
-                        ? "Loading available rooms..."
-                        : "Select an available room"}
-                    </option>
-                    {rooms.map((room) => (
-                      <option key={room.id} value={room.id}>
-                        Room {room.roomNumber} · {room.roomType.name} · Up to{" "}
-                        {room.roomType.capacity} guests
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="details-room" className="mt-2">
+                      <SelectValue
+                        placeholder={
+                          isLoadingRooms
+                            ? "Loading available rooms..."
+                            : "Select an available room"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        {isLoadingRooms
+                          ? "Loading available rooms..."
+                          : "Select an available room"}
+                      </SelectItem>
+                      {rooms.map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          Room {room.roomNumber} · {room.roomType.name} · Up to{" "}
+                          {room.roomType.capacity} guests
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {roomError && (
                     <p role="alert" className="mt-2 text-sm text-red-700">
                       {roomError}

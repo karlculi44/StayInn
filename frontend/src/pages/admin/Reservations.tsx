@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
+import DataTable from "../../components/ui/DataTable";
 import {
   createAdminReservation,
   getAdminReservations,
@@ -18,6 +20,14 @@ import {
 } from "../../services/user.service";
 import type { RoomListing } from "../../types";
 import axios from "axios";
+import { Combobox } from "../../components/ui/combobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import {
   adminRaisedDark,
   adminRaisedLight,
@@ -215,16 +225,82 @@ export default function Reservations() {
     Math.ceil(filteredReservations.length / pageSize),
   );
   const pageToDisplay = Math.min(currentPage, totalPages);
-  const paginatedReservations = filteredReservations.slice(
-    (pageToDisplay - 1) * pageSize,
-    pageToDisplay * pageSize,
+  const reservationColumns = useMemo<ColumnDef<AdminReservation, unknown>[]>(
+    () => [
+      {
+        accessorKey: "referenceId",
+        header: "Reference ID",
+        meta: { className: "whitespace-nowrap font-semibold text-ink" },
+        enableSorting: false,
+      },
+      {
+        id: "guest",
+        accessorFn: (reservation) => getGuestName(reservation),
+        header: "Guest",
+        enableSorting: false,
+      },
+      {
+        id: "room",
+        accessorFn: (reservation) => reservation.room.roomNumber,
+        header: "Room",
+        cell: ({ row }) => (
+          <>
+            <p className="font-semibold">
+              Room {row.original.room.roomNumber}
+            </p>
+            <p className="mt-1 text-muted">
+              {row.original.room.roomType.name}
+            </p>
+          </>
+        ),
+        enableSorting: false,
+      },
+      {
+        accessorKey: "checkIn",
+        header: "Check-in",
+        cell: ({ row }) => formatDate(row.original.checkIn),
+        meta: { className: "whitespace-nowrap" },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "checkOut",
+        header: "Check-out",
+        cell: ({ row }) => formatDate(row.original.checkOut),
+        meta: { className: "whitespace-nowrap" },
+        enableSorting: false,
+      },
+      {
+        id: "totalAmount",
+        accessorFn: (reservation) => Number(reservation.totalAmount),
+        header: "Total Amount",
+        cell: ({ row }) =>
+          formatCurrency(Number(row.original.totalAmount)),
+        meta: { className: "whitespace-nowrap font-semibold" },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <ReservationStatusBadge status={row.original.status} />
+        ),
+        enableSorting: false,
+      },
+    ],
+    [],
   );
+  const reservationTablePagination: PaginationState = {
+    pageIndex: pageToDisplay - 1,
+    pageSize,
+  };
 
   const loadGuestUsers = () => {
     setUserLoadError("");
     setIsLoadingUsers(true);
     void getGuestUsers()
-      .then(setUsers)
+      .then((guestUsers) =>
+        setUsers(guestUsers.filter((user) => user.role === "GUEST")),
+      )
       .catch(() => setUserLoadError("Unable to load registered users."))
       .finally(() => setIsLoadingUsers(false));
   };
@@ -437,24 +513,54 @@ export default function Reservations() {
                   <div className="mt-2">
                     <label
                       htmlFor="reservation-guest-search"
-                      className="text-sm font-medium"
+                      className="mb-2 block text-sm font-medium"
                     >
                       Search by name or email
                     </label>
-                    <input
+                    <Combobox
                       id="reservation-guest-search"
-                      type="search"
-                      autoComplete="off"
-                      value={guestSearch}
-                      onChange={(event) => {
-                        setGuestSearch(event.target.value);
+                      value=""
+                      onValueChange={(userId) => {
+                        const user = users.find(
+                          (candidate) =>
+                            candidate.id === userId &&
+                            candidate.role === "GUEST",
+                        );
+                        if (!user) {
+                          return;
+                        }
+
+                        setSelectedUser(user);
+                        setGuestSearch("");
                         setFormErrors((current) => ({
                           ...current,
                           guest: undefined,
                         }));
                       }}
+                      searchValue={guestSearch}
+                      onSearchValueChange={(value) => {
+                        setGuestSearch(value);
+                        setFormErrors((current) => ({
+                          ...current,
+                          guest: undefined,
+                        }));
+                      }}
+                      options={matchingUsers.slice(0, 8).map((user) => ({
+                        value: user.id,
+                        label: `${user.firstName} ${user.lastName}`,
+                        description: user.email,
+                      }))}
                       placeholder="Enter a guest name or email"
-                      className="mt-2 w-full rounded-xl border px-4 py-3"
+                      searchPlaceholder="Search registered guests..."
+                      emptyMessage={
+                        isLoadingUsers
+                          ? "Loading registered guests..."
+                          : guestSearch.trim()
+                            ? "No matching registered guests."
+                            : "Start typing to search registered guests."
+                      }
+                      disabled={isLoadingUsers || Boolean(userLoadError)}
+                      aria-label="Search registered guests by name or email"
                     />
                     {isLoadingUsers && (
                       <p className="mt-2 text-sm text-muted">
@@ -466,41 +572,6 @@ export default function Reservations() {
                         {userLoadError}
                       </p>
                     )}
-                    {guestSearch.trim() &&
-                      !isLoadingUsers &&
-                      !userLoadError && (
-                        <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border">
-                          {matchingUsers.length > 0 ? (
-                            matchingUsers.slice(0, 8).map((user) => (
-                              <button
-                                key={user.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setGuestSearch("");
-                                  setFormErrors((current) => ({
-                                    ...current,
-                                    guest: undefined,
-                                  }));
-                                }}
-                                className="block w-full border-b px-4 py-3 text-left last:border-b-0 hover:bg-cream focus-visible:bg-cream"
-                              >
-                                <span className="block font-medium">
-                                  {user.firstName} {user.lastName}
-                                </span>
-                                <span className="block text-sm text-muted">
-                                  {user.email}
-                                </span>
-                              </button>
-                            ))
-                          ) : (
-                            <p className="px-4 py-3 text-sm text-muted">
-                              No matching registered users. Only users with an
-                              existing account can be selected.
-                            </p>
-                          )}
-                        </div>
-                      )}
                   </div>
                 )}
                 {formErrors.guest && (
@@ -615,36 +686,50 @@ export default function Reservations() {
                   >
                     Available room
                   </label>
-                  <select
-                    id="reservation-room"
-                    value={selectedRoomId}
-                    disabled={!validStayDates || isLoadingRooms}
-                    onChange={(event) => {
-                      setSelectedRoomId(event.target.value);
+                  <Select
+                    value={selectedRoomId || "__none__"}
+                    onValueChange={(value) => {
+                      setSelectedRoomId(value === "__none__" ? "" : value);
                       setFormErrors((current) => ({
                         ...current,
                         room: undefined,
                         guests: undefined,
                       }));
                     }}
-                    className="mt-2 w-full rounded-xl border px-4 py-3 disabled:bg-black/5"
+                    disabled={!validStayDates || isLoadingRooms}
                   >
-                    <option value="">
-                      {!validStayDates
-                        ? "Choose valid dates first"
-                        : isLoadingRooms
-                          ? "Loading available rooms..."
-                          : "Select an available room"}
-                    </option>
-                    {availableRooms.map((room) => (
-                      <option key={room.id} value={room.id}>
-                        Room {room.roomNumber} · {room.roomType.name} · Up to{" "}
-                        {room.roomType.capacity} ·{" "}
-                        {formatCurrency(Number(room.roomType.pricePerNight))}
-                        /night
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      id="reservation-room"
+                      className="mt-2"
+                    >
+                      <SelectValue
+                        placeholder={
+                          !validStayDates
+                            ? "Choose valid dates first"
+                            : isLoadingRooms
+                              ? "Loading available rooms..."
+                              : "Select an available room"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        {!validStayDates
+                          ? "Choose valid dates first"
+                          : isLoadingRooms
+                            ? "Loading available rooms..."
+                            : "Select an available room"}
+                      </SelectItem>
+                      {availableRooms.map((room) => (
+                        <SelectItem key={room.id} value={room.id}>
+                          Room {room.roomNumber} · {room.roomType.name} · Up to{" "}
+                          {room.roomType.capacity} ·{" "}
+                          {formatCurrency(Number(room.roomType.pricePerNight))}
+                          /night
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {isLoadingRooms && (
                     <p className="mt-2 text-sm text-muted">
                       Checking rooms for these dates...
@@ -796,23 +881,24 @@ export default function Reservations() {
                 >
                   Status
                 </label>
-                <select
-                  id="reservation-status-filter"
+                <Select
                   value={statusFilter}
-                  onChange={(event) => {
-                    setStatusFilter(
-                      event.target.value as "ALL" | ReservationStatus,
-                    );
+                  onValueChange={(value) => {
+                    setStatusFilter(value as "ALL" | ReservationStatus);
                     setCurrentPage(1);
                   }}
-                  className="mt-2 block w-full rounded-xl border px-4 py-3"
                 >
+                  <SelectTrigger id="reservation-status-filter" className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
                   {statusOptions.map((status) => (
-                    <option key={status} value={status}>
+                    <SelectItem key={status} value={status}>
                       {status === "ALL" ? "All statuses" : status}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -822,18 +908,21 @@ export default function Reservations() {
                 >
                   Sort by
                 </label>
-                <select
-                  id="reservation-sort"
+                <Select
                   value={sortBy}
-                  onChange={(event) => {
-                    setSortBy(event.target.value as "checkIn" | "createdAt");
+                  onValueChange={(value) => {
+                    setSortBy(value as "checkIn" | "createdAt");
                     setCurrentPage(1);
                   }}
-                  className="mt-2 block w-full rounded-xl border px-4 py-3"
                 >
-                  <option value="checkIn">Check-in date</option>
-                  <option value="createdAt">Created date</option>
-                </select>
+                  <SelectTrigger id="reservation-sort" className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="checkIn">Check-in date</SelectItem>
+                    <SelectItem value="createdAt">Created date</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -862,131 +951,64 @@ export default function Reservations() {
                 }
               />
             ) : (
-              <>
-                <div className="overflow-x-auto rounded-2xl bg-white">
-                  <table className="w-full min-w-240 text-left text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="px-6 py-4">Reference ID</th>
-                        <th className="px-6 py-4">Guest</th>
-                        <th className="px-6 py-4">Room</th>
-                        <th className="px-6 py-4">Check-in</th>
-                        <th className="px-6 py-4">Check-out</th>
-                        <th className="px-6 py-4">Total Amount</th>
-                        <th className="px-6 py-4">Status</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {paginatedReservations.map((reservation) => (
-                          <tr
-                            key={reservation.id}
-                            tabIndex={0}
-                            aria-label={`View reservation ${reservation.referenceId}`}
-                            onClick={() =>
-                              navigate(`/admin/reservations/${reservation.id}`, {
-                                state: {
-                                  from: `${location.pathname}${location.search}`,
-                                  reservationListState: {
-                                    searchTerm,
-                                    statusFilter,
-                                    sortBy,
-                                    currentPage: pageToDisplay,
-                                  },
-                                },
-                              })
-                            }
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                navigate(
-                                  `/admin/reservations/${reservation.id}`,
-                                  {
-                                    state: {
-                                      from: `${location.pathname}${location.search}`,
-                                      reservationListState: {
-                                        searchTerm,
-                                        statusFilter,
-                                        sortBy,
-                                        currentPage: pageToDisplay,
-                                      },
-                                    },
-                                  },
-                                );
-                              }
-                            }}
-                            className="cursor-pointer border-b outline-none last:border-b-0 hover:bg-cream/60 focus-visible:bg-cream/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage"
-                          >
-                            <td className="whitespace-nowrap px-6 py-4 font-semibold">
-                              {reservation.referenceId}
-                            </td>
-
-                            <td className="px-6 py-4">
-                              {getGuestName(reservation)}
-                            </td>
-
-                            <td className="whitespace-nowrap px-6 py-4">
-                              <p className="font-semibold">
-                                Room {reservation.room.roomNumber}
-                              </p>
-                              <p className="mt-1 text-muted">
-                                {reservation.room.roomType.name}
-                              </p>
-                            </td>
-
-                            <td className="whitespace-nowrap px-6 py-4">
-                              {formatDate(reservation.checkIn)}
-                            </td>
-
-                            <td className="whitespace-nowrap px-6 py-4">
-                              {formatDate(reservation.checkOut)}
-                            </td>
-
-                            <td className="whitespace-nowrap px-6 py-4 font-semibold">
-                              {formatCurrency(Number(reservation.totalAmount))}
-                            </td>
-
-                            <td className="px-6 py-4">
-                              <ReservationStatusBadge status={reservation.status} />
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between rounded-2xl bg-white px-6 py-4 text-sm">
-                    <p className="text-muted">
-                      Page {pageToDisplay} of {totalPages}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        disabled={pageToDisplay === 1}
-                        onClick={() =>
-                          setCurrentPage((page) => Math.max(1, page - 1))
-                        }
-                        className={`rounded-xl px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
-                      >
-                        Previous
-                      </button>
-                      <button
-                        type="button"
-                        disabled={pageToDisplay === totalPages}
-                        onClick={() =>
-                          setCurrentPage((page) =>
-                            Math.min(totalPages, page + 1),
-                          )
-                        }
-                        className={`rounded-xl px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+              <DataTable
+                columns={reservationColumns}
+                data={filteredReservations}
+                emptyMessage="No matching reservations."
+                enableSorting={false}
+                pageSize={pageSize}
+                showPageSize={false}
+                showPagination={totalPages > 1}
+                pagination={reservationTablePagination}
+                onPaginationChange={(updater) => {
+                  setCurrentPage((currentPage) => {
+                    const currentPagination = {
+                      pageIndex: currentPage - 1,
+                      pageSize,
+                    };
+                    const nextPagination =
+                      typeof updater === "function"
+                        ? updater(currentPagination)
+                        : updater;
+                    return nextPagination.pageIndex + 1;
+                  });
+                }}
+                tableClassName="min-w-240"
+                getRowProps={(reservation) => ({
+                  tabIndex: 0,
+                  "aria-label": `View reservation ${reservation.referenceId}`,
+                  onClick: () =>
+                    navigate(`/admin/reservations/${reservation.id}`, {
+                      state: {
+                        from: `${location.pathname}${location.search}`,
+                        reservationListState: {
+                          searchTerm,
+                          statusFilter,
+                          sortBy,
+                          currentPage: pageToDisplay,
+                        },
+                      },
+                    }),
+                  onKeyDown: (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/admin/reservations/${reservation.id}`, {
+                        state: {
+                          from: `${location.pathname}${location.search}`,
+                          reservationListState: {
+                            searchTerm,
+                            statusFilter,
+                            sortBy,
+                            currentPage: pageToDisplay,
+                          },
+                        },
+                      });
+                    }
+                  },
+                  className:
+                    "cursor-pointer outline-none focus-visible:bg-cream/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage",
+                })}
+              />
             )}
           </>
         )}

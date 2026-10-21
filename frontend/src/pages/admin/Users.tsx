@@ -1,5 +1,6 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   createUser,
   getUsers,
@@ -7,7 +8,8 @@ import {
   deleteUser,
   type AdminUser,
 } from "../../services/user.service";
-import { ErrorState } from "../../components/ui/States";
+import { ErrorState, Loading } from "../../components/ui/States";
+import DataTable from "../../components/ui/DataTable";
 import ProfileAvatar from "../../components/ui/ProfileAvatar";
 import { useAuth } from "../../context/useAuth";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
@@ -17,6 +19,13 @@ import {
   adminRaisedLight,
   adminRaisedSage,
 } from "../../components/ui/adminButtonStyles";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
 type User = AdminUser;
 
@@ -40,6 +49,10 @@ export default function Users() {
   const { user: currentUser } = useAuth();
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | AdminUser["role"]>(
+    "ALL",
+  );
 
   const closeCreateForm = () => {
     setIsCreateOpen(false);
@@ -142,7 +155,7 @@ export default function Users() {
     }
   };
 
-  const handleUpdateRole = async (id: string) => {
+  const handleUpdateRole = useCallback(async (id: string) => {
     setIsSaving(true);
     setActionError("");
     setSuccessMessage("");
@@ -168,7 +181,7 @@ export default function Users() {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [selectedRole]);
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
@@ -206,8 +219,163 @@ export default function Users() {
     }
   };
 
+  const filteredUsers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return users.filter((user) => {
+      const matchesRole = roleFilter === "ALL" || user.role === roleFilter;
+      const matchesSearch =
+        !query ||
+        `${user.firstName} ${user.lastName} ${user.email}`
+          .toLowerCase()
+          .includes(query);
+      return matchesRole && matchesSearch;
+    });
+  }, [roleFilter, searchTerm, users]);
+
+  const userColumns = useMemo<ColumnDef<User, unknown>[]>(
+    () => [
+      {
+        id: "avatar",
+        header: "Image",
+        cell: ({ row }) => (
+          <ProfileAvatar
+            profilePictureUrl={row.original.profilePictureUrl}
+            initials={`${row.original.firstName.trim().charAt(0)}${row.original.lastName.trim().charAt(0)}`}
+            className="size-10"
+          />
+        ),
+        enableSorting: false,
+      },
+      {
+        id: "name",
+        accessorFn: (user) => `${user.firstName} ${user.lastName}`,
+        header: "Name",
+        cell: ({ row }) => (
+          <span className="font-medium text-ink">
+            {row.original.firstName} {row.original.lastName}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        meta: { className: "text-muted" },
+      },
+      {
+        accessorKey: "role",
+        header: "Role",
+        cell: ({ row }) =>
+          editingUserId === row.original.id ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={selectedRole}
+                onValueChange={(value) =>
+                  setSelectedRole(value as AdminUser["role"])
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger
+                  className="h-10 w-32 rounded-lg px-3 py-2"
+                  aria-label={`Role for ${row.original.firstName} ${row.original.lastName}`}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GUEST">GUEST</SelectItem>
+                  <SelectItem value="ADMIN">ADMIN</SelectItem>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                onClick={() => void handleUpdateRole(row.original.id)}
+                disabled={isSaving}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedSage}`}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingUserId(null);
+                  setActionError("");
+                }}
+                disabled={isSaving}
+                className={`rounded-lg px-3 py-1.5 text-sm text-muted disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+              {row.original.role}
+            </span>
+          ),
+        enableSorting: true,
+      },
+      {
+        accessorKey: "createdAt",
+        header: "Joined",
+        cell: ({ row }) =>
+          new Date(row.original.createdAt).toLocaleDateString(),
+        meta: { className: "whitespace-nowrap text-muted" },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const user = row.original;
+          return (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingUserId(user.id);
+                  setSelectedRole(user.role);
+                  setActionError("");
+                }}
+                disabled={
+                  currentUser?.id === user.id ||
+                  deletingUserId === user.id ||
+                  isSaving
+                }
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${adminRaisedSage}`}
+              >
+                {currentUser?.id === user.id ? "Your Account" : "Edit Role"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActionError("");
+                  setSuccessMessage("");
+                  setUserToDelete(user);
+                }}
+                disabled={
+                  currentUser?.id === user.id ||
+                  deletingUserId !== null ||
+                  isSaving
+                }
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${adminRaisedDanger}`}
+              >
+                {deletingUserId === user.id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          );
+        },
+        enableSorting: false,
+      },
+    ],
+    [
+      currentUser?.id,
+      deletingUserId,
+      editingUserId,
+      handleUpdateRole,
+      isSaving,
+      selectedRole,
+    ],
+  );
+
   if (isLoading) {
-    return <p className="p-6 text-gray-500">Loading users...</p>;
+    return <Loading label="Loading users..." />;
   }
 
   if (error) {
@@ -257,135 +425,50 @@ export default function Users() {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600">
-            <tr>
-              <th className="px-6 py-4 font-medium">Image</th>
-              <th className="px-6 py-4 font-medium">Name</th>
-              <th className="px-6 py-4 font-medium">Email</th>
-              <th className="px-6 py-4 font-medium">Role</th>
-              <th className="px-6 py-4 font-medium">Joined</th>
-              <th className="px-6 py-4 font-medium">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-100">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <ProfileAvatar
-                    profilePictureUrl={user.profilePictureUrl}
-                    initials={`${user.firstName.trim().charAt(0)}${user.lastName.trim().charAt(0)}`}
-                    className="size-10"
-                  />
-                </td>
-                <td className="px-6 py-4 font-medium text-gray-900">
-                  {user.firstName} {user.lastName}
-                </td>
-                <td className="px-6 py-4 text-gray-600">{user.email}</td>
-
-                <td className="px-6 py-4">
-                  {editingUserId === user.id ? (
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={selectedRole}
-                        onChange={(event) =>
-                          setSelectedRole(
-                            event.target.value as AdminUser["role"],
-                          )
-                        }
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        disabled={isSaving}
-                      >
-                        <option value="GUEST">GUEST</option>
-                        <option value="ADMIN">ADMIN</option>
-                      </select>
-
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateRole(user.id)}
-                        disabled={isSaving}
-                        className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedSage}`}
-                      >
-                        {isSaving ? "Saving..." : "Save"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingUserId(null);
-                          setActionError("");
-                        }}
-                        disabled={isSaving}
-                        className={`rounded-lg px-3 py-1.5 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                      {user.role}
-                    </span>
-                  )}
-                </td>
-
-                <td className="px-6 py-4 text-gray-600">
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </td>
-
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingUserId(user.id);
-                        setSelectedRole(user.role);
-                        setActionError("");
-                      }}
-                      disabled={
-                        currentUser?.id === user.id ||
-                        deletingUserId === user.id ||
-                        isSaving
-                      }
-                      className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${adminRaisedSage}`}
-                    >
-                      {currentUser?.id === user.id
-                        ? "Your Account"
-                        : "Edit Role"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActionError("");
-                        setSuccessMessage("");
-                        setUserToDelete(user);
-                      }}
-                      disabled={
-                        currentUser?.id === user.id ||
-                        deletingUserId !== null ||
-                        isSaving
-                      }
-                      className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${adminRaisedDanger}`}
-                    >
-                      {deletingUserId === user.id ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-            {users.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No users found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white p-4 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <label htmlFor="users-search" className="text-sm font-medium">
+            Search users
+          </label>
+          <input
+            id="users-search"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search by name or email"
+            className="mt-2 w-full rounded-xl border px-4 py-3"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="users-role-filter"
+            className="block text-sm font-medium"
+          >
+            Role
+          </label>
+          <Select
+            value={roleFilter}
+            onValueChange={(value) =>
+              setRoleFilter(value as "ALL" | AdminUser["role"])
+            }
+          >
+            <SelectTrigger id="users-role-filter" className="mt-2 sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All roles</SelectItem>
+              <SelectItem value="ADMIN">Admin</SelectItem>
+              <SelectItem value="GUEST">Guest</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+      <DataTable
+        columns={userColumns}
+        data={filteredUsers}
+        emptyMessage="No users match the selected search and filters."
+        tableClassName="min-w-[52rem]"
+      />
       {isCreateOpen && (
         <div
           className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-y-auto bg-black/50 p-4"
@@ -513,18 +596,21 @@ export default function Users() {
                 >
                   Role <span className="text-red-600">*</span>
                 </label>
-                <select
-                  id="create-user-role"
+                <Select
                   required
                   value={createRole}
-                  onChange={(event) =>
-                    setCreateRole(event.target.value as AdminUser["role"])
+                  onValueChange={(value) =>
+                    setCreateRole(value as AdminUser["role"])
                   }
-                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
                 >
-                  <option value="GUEST">GUEST</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
+                  <SelectTrigger id="create-user-role" className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GUEST">GUEST</SelectItem>
+                    <SelectItem value="ADMIN">ADMIN</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {createError && (

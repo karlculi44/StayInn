@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import {
   createRoom,
   deleteRoom,
@@ -16,18 +15,26 @@ import {
   adminRaisedDark,
   adminRaisedLight,
 } from "../../components/ui/adminButtonStyles";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
 type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "INACTIVE";
 
 type RoomType = {
   id: string;
   name: string;
-};
-
-type RoomActionsMenu = {
-  room: RoomListing;
-  top: number;
-  left: number;
 };
 
 const roomStatusStyles: Record<RoomStatus, string> = {
@@ -55,10 +62,7 @@ export default function Rooms() {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [roomToDelete, setRoomToDelete] = useState<RoomListing | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [actionsMenu, setActionsMenu] = useState<RoomActionsMenu | null>(null);
-  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
-  const actionsMenuButtonRef = useRef<HTMLButtonElement | null>(null);
-  const firstMenuActionRef = useRef<HTMLButtonElement | null>(null);
+  const [actionsMenu, setActionsMenu] = useState<RoomListing | null>(null);
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -87,51 +91,6 @@ export default function Rooms() {
 
     fetchRoomTypes();
   }, []);
-
-  useEffect(() => {
-    if (!actionsMenu) {
-      return;
-    }
-
-    firstMenuActionRef.current?.focus();
-
-    const closeMenuOnOutsideClick = (event: PointerEvent) => {
-      const target = event.target;
-      if (
-        target instanceof Node &&
-        !actionsMenuRef.current?.contains(target) &&
-        !actionsMenuButtonRef.current?.contains(target)
-      ) {
-        setActionsMenu(null);
-        actionsMenuButtonRef.current = null;
-      }
-    };
-
-    const closeMenuOnKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setActionsMenu(null);
-        actionsMenuButtonRef.current?.focus();
-        actionsMenuButtonRef.current = null;
-      }
-    };
-
-    const closeMenuOnViewportChange = () => {
-      setActionsMenu(null);
-      actionsMenuButtonRef.current = null;
-    };
-
-    document.addEventListener("pointerdown", closeMenuOnOutsideClick);
-    document.addEventListener("keydown", closeMenuOnKeyDown);
-    window.addEventListener("scroll", closeMenuOnViewportChange, true);
-    window.addEventListener("resize", closeMenuOnViewportChange);
-
-    return () => {
-      document.removeEventListener("pointerdown", closeMenuOnOutsideClick);
-      document.removeEventListener("keydown", closeMenuOnKeyDown);
-      window.removeEventListener("scroll", closeMenuOnViewportChange, true);
-      window.removeEventListener("resize", closeMenuOnViewportChange);
-    };
-  }, [actionsMenu]);
 
   const filteredRooms = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -169,29 +128,8 @@ export default function Rooms() {
     setStatusFilter("ALL");
   };
 
-  const openActionsMenu = (
-    event: React.MouseEvent<HTMLButtonElement>,
-    room: RoomListing,
-  ) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const menuWidth = 192;
-    const menuHeight = 96;
-    const left = Math.max(
-      8,
-      Math.min(bounds.right - menuWidth, window.innerWidth - menuWidth - 8),
-    );
-    const top =
-      bounds.bottom + menuHeight + 8 <= window.innerHeight
-        ? bounds.bottom + 4
-        : Math.max(8, bounds.top - menuHeight - 4);
-
-    actionsMenuButtonRef.current = event.currentTarget;
-    setActionsMenu({ room, top, left });
-  };
-
   const closeActionsMenu = () => {
     setActionsMenu(null);
-    actionsMenuButtonRef.current = null;
   };
 
   const openEditForm = (room: RoomListing) => {
@@ -460,38 +398,51 @@ export default function Rooms() {
               </div>
 
               <div>
-                <label className="text-sm font-medium">Room Type</label>
+                <label htmlFor="room-form-type" className="text-sm font-medium">
+                  Room Type
+                </label>
 
-                <select
-                  value={roomTypeId}
-                  onChange={(event) => setRoomTypeId(event.target.value)}
-                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                <Select
+                  value={roomTypeId || "__clear__"}
+                  onValueChange={(value) =>
+                    setRoomTypeId(value === "__clear__" ? "" : value)
+                  }
                 >
-                  <option value="">Select room type</option>
-
+                  <SelectTrigger id="room-form-type" className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__clear__">Select room type</SelectItem>
                   {roomTypes.map((roomType) => (
-                    <option key={roomType.id} value={roomType.id}>
+                    <SelectItem key={roomType.id} value={roomType.id}>
                       {roomType.name}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                  </SelectContent>
+                </Select>
               </div>
 
               {editingRoomId && (
                 <div>
-                  <label className="text-sm font-medium">Status</label>
+                  <label htmlFor="room-form-status" className="text-sm font-medium">
+                    Status
+                  </label>
 
-                  <select
+                  <Select
                     value={roomStatus}
-                    onChange={(event) =>
-                      setRoomStatus(event.target.value as RoomStatus)
+                    onValueChange={(value) =>
+                      setRoomStatus(value as RoomStatus)
                     }
-                    className="mt-2 w-full rounded-xl border px-4 py-3"
                   >
-                    <option value="AVAILABLE">Available</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                    <option value="INACTIVE">Inactive</option>
-                  </select>
+                    <SelectTrigger id="room-form-status" className="mt-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AVAILABLE">Available</SelectItem>
+                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -576,19 +527,19 @@ export default function Rooms() {
                 >
                   Room Type
                 </label>
-                <select
-                  id="room-type-filter"
-                  value={roomTypeFilter}
-                  onChange={(event) => setRoomTypeFilter(event.target.value)}
-                  className="w-full rounded-xl border px-4 py-3 text-sm"
-                >
-                  <option value="ALL">All Types</option>
-                  {roomTypes.map((roomType) => (
-                    <option key={roomType.id} value={roomType.id}>
-                      {roomType.name}
-                    </option>
-                  ))}
-                </select>
+                <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+                  <SelectTrigger id="room-type-filter" className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Types</SelectItem>
+                    {roomTypes.map((roomType) => (
+                      <SelectItem key={roomType.id} value={roomType.id}>
+                        {roomType.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -598,19 +549,19 @@ export default function Rooms() {
                 >
                   Capacity
                 </label>
-                <select
-                  id="room-capacity-filter"
-                  value={capacityFilter}
-                  onChange={(event) => setCapacityFilter(event.target.value)}
-                  className="w-full rounded-xl border px-4 py-3 text-sm"
-                >
-                  <option value="ALL">All Capacities</option>
-                  {capacityOptions.map((capacity) => (
-                    <option key={capacity} value={capacity}>
-                      {capacity} {capacity === 1 ? "guest" : "guests"}
-                    </option>
-                  ))}
-                </select>
+                <Select value={capacityFilter} onValueChange={setCapacityFilter}>
+                  <SelectTrigger id="room-capacity-filter" className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Capacities</SelectItem>
+                    {capacityOptions.map((capacity) => (
+                      <SelectItem key={capacity} value={String(capacity)}>
+                        {capacity} {capacity === 1 ? "guest" : "guests"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -620,19 +571,22 @@ export default function Rooms() {
                 >
                   Status
                 </label>
-                <select
-                  id="room-status-filter"
+                <Select
                   value={statusFilter}
-                  onChange={(event) =>
-                    setStatusFilter(event.target.value as "ALL" | RoomStatus)
+                  onValueChange={(value) =>
+                    setStatusFilter(value as "ALL" | RoomStatus)
                   }
-                  className="w-full rounded-xl border px-4 py-3 text-sm"
                 >
-                  <option value="ALL">All Statuses</option>
-                  <option value="AVAILABLE">AVAILABLE</option>
-                  <option value="MAINTENANCE">MAINTENANCE</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                </select>
+                  <SelectTrigger id="room-status-filter" className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Statuses</SelectItem>
+                    <SelectItem value="AVAILABLE">AVAILABLE</SelectItem>
+                    <SelectItem value="MAINTENANCE">MAINTENANCE</SelectItem>
+                    <SelectItem value="INACTIVE">INACTIVE</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -666,7 +620,7 @@ export default function Rooms() {
                   <article
                     key={room.id}
                     className={`relative rounded-2xl border border-black/5 bg-white shadow-sm transition-shadow hover:shadow-md ${
-                      actionsMenu?.room.id === room.id ? "z-20" : ""
+                      actionsMenu?.id === room.id ? "z-20" : ""
                     }`}
                   >
                     <div className="relative h-48 overflow-hidden rounded-t-2xl bg-cream">
@@ -696,36 +650,55 @@ export default function Rooms() {
                         }}
                       />
 
-                      <button
-                        type="button"
-                        aria-label={`Actions for room ${room.roomNumber}`}
-                        aria-haspopup="menu"
-                        aria-expanded={actionsMenu?.room.id === room.id}
-                        aria-controls={
-                          actionsMenu?.room.id === room.id
-                            ? "room-actions-menu"
-                            : undefined
+                      <DropdownMenu
+                        open={actionsMenu?.id === room.id}
+                        onOpenChange={(isOpen) =>
+                          setActionsMenu((currentRoom) =>
+                            isOpen
+                              ? room
+                              : currentRoom?.id === room.id
+                                ? null
+                                : currentRoom,
+                          )
                         }
-                        onClick={(event) => {
-                          if (actionsMenu?.room.id === room.id) {
-                            closeActionsMenu();
-                            return;
-                          }
-                          openActionsMenu(event, room);
-                        }}
-                        className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full border-t border-t-white border-b border-b-black/20 bg-white/95 text-ink shadow-[0_2px_0_rgba(0,0,0,0.16),0_4px_8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] hover:bg-white active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
                       >
-                        <svg
-                          aria-hidden="true"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          className="size-5"
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Actions for room ${room.roomNumber}`}
+                            className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full border-t border-t-white border-b border-b-black/20 bg-white/95 text-ink shadow-[0_2px_0_rgba(0,0,0,0.16),0_4px_8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] hover:bg-white active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                          >
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="size-5"
+                            >
+                              <circle cx="5" cy="12" r="1.8" />
+                              <circle cx="12" cy="12" r="1.8" />
+                              <circle cx="19" cy="12" r="1.8" />
+                            </svg>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          aria-label={`Actions for room ${room.roomNumber}`}
                         >
-                          <circle cx="5" cy="12" r="1.8" />
-                          <circle cx="12" cy="12" r="1.8" />
-                          <circle cx="19" cy="12" r="1.8" />
-                        </svg>
-                      </button>
+                          <DropdownMenuItem onSelect={() => openEditForm(room)}>
+                            Edit Room
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => {
+                              setActionsMenu(null);
+                              setRoomToDelete(room);
+                            }}
+                          >
+                            Delete Room
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     <div className="p-5">
@@ -800,41 +773,6 @@ export default function Rooms() {
           )}
         </section>
       )}
-
-      {actionsMenu &&
-        createPortal(
-          <div
-            id="room-actions-menu"
-            ref={actionsMenuRef}
-            role="menu"
-            aria-label={`Actions for room ${actionsMenu.room.roomNumber}`}
-            className="fixed z-60 min-w-48 rounded-xl border border-black/10 bg-white p-1.5 shadow-xl"
-            style={{ top: actionsMenu.top, left: actionsMenu.left }}
-          >
-            <button
-              ref={firstMenuActionRef}
-              type="button"
-              role="menuitem"
-              onClick={() => openEditForm(actionsMenu.room)}
-              className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-ink hover:bg-cream focus-visible:bg-cream focus-visible:outline-none"
-            >
-              Edit Room
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                const room = actionsMenu.room;
-                closeActionsMenu();
-                setRoomToDelete(room);
-              }}
-              className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:bg-red-50 focus-visible:outline-none"
-            >
-              Delete Room
-            </button>
-          </div>,
-          document.body,
-        )}
 
       <ConfirmDeleteModal
         isOpen={roomToDelete !== null}
