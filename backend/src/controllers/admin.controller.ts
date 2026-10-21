@@ -95,3 +95,30 @@ export const getDashboardStats = asyncHandler(
     });
   },
 );
+
+export const getMonthlyBookingTrends = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const monthlyTrends = await prisma.$queryRaw<
+      { month: string; reservationCount: number }[]
+    >`
+      WITH month_range AS (
+        SELECT generate_series(
+          date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '11 months',
+          date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+          INTERVAL '1 month'
+        ) AS month_start
+      )
+      SELECT
+        to_char(month_range.month_start, 'YYYY-MM') AS month,
+        COUNT(reservation.id)::int AS "reservationCount"
+      FROM month_range
+      LEFT JOIN "Reservation" AS reservation
+        ON reservation."createdAt" >= month_range.month_start
+        AND reservation."createdAt" < month_range.month_start + INTERVAL '1 month'
+      GROUP BY month_range.month_start
+      ORDER BY month_range.month_start
+    `;
+
+    res.json(monthlyTrends);
+  },
+);

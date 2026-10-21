@@ -11,8 +11,23 @@ export type DashboardStats = {
   cancelledReservations: number;
 };
 
+export type MonthlyBookingTrend = {
+  month: string;
+  reservationCount: number;
+};
+
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   const response = await api.get<DashboardStats>("/admin/dashboard");
+
+  return response.data;
+};
+
+export const getMonthlyBookingTrends = async (): Promise<
+  MonthlyBookingTrend[]
+> => {
+  const response = await api.get<MonthlyBookingTrend[]>(
+    "/admin/dashboard/monthly-booking-trends",
+  );
 
   return response.data;
 };
