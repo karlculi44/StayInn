@@ -10,6 +10,12 @@ import {
 import { ErrorState } from "../../components/ui/States";
 import { useAuth } from "../../context/useAuth";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
+import {
+  adminRaisedDanger,
+  adminRaisedDark,
+  adminRaisedLight,
+  adminRaisedSage,
+} from "../../components/ui/adminButtonStyles";
 
 type User = AdminUser;
 
@@ -217,7 +223,7 @@ export default function Users() {
               setCreateError("");
               setIsCreateOpen(true);
             }}
-            className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+            className={`rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage ${adminRaisedDark}`}
           >
             Create User
           </button>
@@ -280,7 +286,7 @@ export default function Users() {
                         type="button"
                         onClick={() => handleUpdateRole(user.id)}
                         disabled={isSaving}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                        className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedSage}`}
                       >
                         {isSaving ? "Saving..." : "Save"}
                       </button>
@@ -292,7 +298,7 @@ export default function Users() {
                           setActionError("");
                         }}
                         disabled={isSaving}
-                        className="text-sm text-gray-500 hover:text-gray-700"
+                        className={`rounded-lg px-3 py-1.5 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                       >
                         Cancel
                       </button>
@@ -322,7 +328,7 @@ export default function Users() {
                         deletingUserId === user.id ||
                         isSaving
                       }
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${adminRaisedSage}`}
                     >
                       {currentUser?.id === user.id
                         ? "Your Account"
@@ -339,7 +345,7 @@ export default function Users() {
                         deletingUserId !== null ||
                         isSaving
                       }
-                      className="text-sm font-medium text-red-600 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${adminRaisedDanger}`}
                     >
                       {deletingUserId === user.id ? "Deleting..." : "Delete"}
                     </button>
@@ -514,14 +520,14 @@ export default function Users() {
                   type="button"
                   onClick={closeCreateForm}
                   disabled={isCreating}
-                  className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="rounded-xl bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
                 >
                   {isCreating ? "Creating..." : "Create User"}
                 </button>

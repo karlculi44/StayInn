@@ -8,6 +8,12 @@ import {
 import { ErrorState } from "../../components/ui/States";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import axios from "axios";
+import {
+  adminRaisedDanger,
+  adminRaisedDark,
+  adminRaisedLight,
+  adminRaisedSage,
+} from "../../components/ui/adminButtonStyles";
 
 type RoomType = {
   id: string;
@@ -209,7 +215,7 @@ export default function RoomTypes() {
             setFormError("");
             setIsFormOpen(true);
           }}
-          className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white"
+          className={`rounded-full px-5 py-3 text-sm font-semibold ${adminRaisedDark}`}
         >
           Add Room Type
         </button>
@@ -288,7 +294,7 @@ export default function RoomTypes() {
               <button
                 type="submit"
                 disabled={isCreating}
-                className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
               >
                 {isCreating
                   ? editingRoomTypeId
@@ -310,7 +316,7 @@ export default function RoomTypes() {
                   setFormError("");
                   setEditingRoomTypeId(null);
                 }}
-                className="rounded-full border px-5 py-3 text-sm font-semibold"
+                className={`rounded-full px-5 py-3 text-sm font-semibold ${adminRaisedLight}`}
               >
                 Cancel
               </button>
@@ -374,7 +380,7 @@ export default function RoomTypes() {
                           setFormError("");
                           setIsFormOpen(true);
                         }}
-                        className="text-sm font-semibold underline"
+                        className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${adminRaisedSage}`}
                       >
                         Edit
                       </button>
@@ -384,7 +390,7 @@ export default function RoomTypes() {
                         onClick={() =>
                           setRoomTypeToDelete(roomType)
                         }
-                        className="ml-3 text-sm font-medium text-red-600 hover:text-red-800"
+                        className={`ml-3 rounded-lg px-3 py-1.5 text-sm font-medium ${adminRaisedDanger}`}
                       >
                         Delete
                       </button>

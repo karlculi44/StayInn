@@ -1,3 +1,8 @@
+import {
+  adminRaisedRed,
+  adminRaisedLight,
+} from "./adminButtonStyles";
+
 type ConfirmDeleteModalProps = {
   isOpen: boolean;
   itemName: string;
@@ -63,7 +68,7 @@ export default function ConfirmDeleteModal({
             type="button"
             onClick={onCancel}
             disabled={isDeleting}
-            className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
           >
             Cancel
           </button>
@@ -71,7 +76,7 @@ export default function ConfirmDeleteModal({
             type="button"
             onClick={onConfirm}
             disabled={isDeleting}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedRed}`}
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </button>

@@ -2,6 +2,10 @@ import { useState, type FormEvent } from "react";
 import axios from "axios";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
+import {
+  adminRaisedDark,
+  adminRaisedLight,
+} from "../../components/ui/adminButtonStyles";
 import { useAuth } from "../../context/useAuth";
 import { updateMyProfile } from "../../services/auth.services";
 
@@ -151,7 +155,11 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button type="submit" disabled={isSaving}>
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className={!showLogout ? adminRaisedDark : ""}
+              >
                 {isSaving ? "Saving..." : "Save changes"}
               </Button>
               <Button
@@ -159,6 +167,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
                 variant="secondary"
                 disabled={isSaving}
                 onClick={cancelEditing}
+                className={!showLogout ? adminRaisedLight : ""}
               >
                 Cancel
               </Button>
@@ -191,7 +200,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
             <Button
               type="button"
               variant="secondary"
-              className="mt-6"
+              className={`mt-6 ${!showLogout ? adminRaisedLight : ""}`}
               onClick={startEditing}
             >
               Edit profile

@@ -12,6 +12,10 @@ import { ErrorState } from "../../components/ui/States";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import type { RoomListing } from "../../types";
 import { getRoomTypeImage } from "../../utils/room-image";
+import {
+  adminRaisedDark,
+  adminRaisedLight,
+} from "../../components/ui/adminButtonStyles";
 
 type RoomStatus = "AVAILABLE" | "MAINTENANCE" | "INACTIVE";
 
@@ -342,7 +346,7 @@ export default function Rooms() {
             setFormError("");
             setIsFormOpen(true);
           }}
-          className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white"
+          className={`rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage ${adminRaisedDark}`}
         >
           Add Room
         </button>
@@ -511,7 +515,7 @@ export default function Rooms() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                  className={`rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
                 >
                   {isCreating
                     ? editingRoomId
@@ -526,7 +530,7 @@ export default function Rooms() {
                   type="button"
                   onClick={closeForm}
                   disabled={isCreating}
-                  className="rounded-full border px-5 py-3 text-sm font-semibold"
+                  className={`rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                 >
                   Cancel
                 </button>
@@ -709,7 +713,7 @@ export default function Rooms() {
                           }
                           openActionsMenu(event, room);
                         }}
-                        className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full bg-white/95 text-ink shadow-sm hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                        className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full border-t border-t-white border-b border-b-black/20 bg-white/95 text-ink shadow-[0_2px_0_rgba(0,0,0,0.16),0_4px_8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] hover:bg-white active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
                       >
                         <svg
                           aria-hidden="true"
@@ -779,7 +783,7 @@ export default function Rooms() {
                     setFormError("");
                     setIsFormOpen(true);
                   }}
-                  className="mt-5 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white"
+                  className={`mt-5 rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage ${adminRaisedDark}`}
                 >
                   Add Room
                 </button>

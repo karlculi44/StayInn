@@ -18,6 +18,10 @@ import type { RoomListing } from "../../types";
 import axios from "axios";
 import { createPortal } from "react-dom";
 import ConfirmCancelReservationModal from "../../components/ui/ConfirmCancelReservationModal";
+import {
+  adminRaisedDark,
+  adminRaisedLight,
+} from "../../components/ui/adminButtonStyles";
 
 const statusOptions: Array<"ALL" | ReservationStatus> = [
   "ALL",
@@ -549,7 +553,7 @@ export default function Reservations() {
         <button
           type="button"
           onClick={openCreateForm}
-          className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-sage focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+          className={`rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage ${adminRaisedDark}`}
         >
           Create Reservation
         </button>
@@ -931,14 +935,14 @@ export default function Reservations() {
                   type="button"
                   onClick={closeCreateForm}
                   disabled={isCreatingReservation}
-                  className="rounded-full border px-5 py-3 text-sm font-semibold disabled:opacity-50"
+                  className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isCreatingReservation}
-                  className="rounded-full bg-black px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
                 >
                   {isCreatingReservation
                     ? editingReservation
@@ -1173,7 +1177,7 @@ export default function Reservations() {
                                   type="button"
                                   disabled={isUpdating || isCreatingReservation}
                                   onClick={() => openEditForm(reservation)}
-                                  className="rounded-full border border-black/15 px-4 py-2 text-sm font-semibold hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50"
+                                  className={`rounded-full px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                                 >
                                   Edit
                                 </button>
@@ -1198,7 +1202,7 @@ export default function Reservations() {
                         onClick={() =>
                           setCurrentPage((page) => Math.max(1, page - 1))
                         }
-                        className="rounded-xl border px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                        className={`rounded-xl px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                       >
                         Previous
                       </button>
@@ -1210,7 +1214,7 @@ export default function Reservations() {
                             Math.min(totalPages, page + 1),
                           )
                         }
-                        className="rounded-xl border px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                        className={`rounded-xl px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
                       >
                         Next
                       </button>

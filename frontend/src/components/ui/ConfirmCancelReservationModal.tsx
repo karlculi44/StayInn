@@ -1,3 +1,5 @@
+import { adminRaisedLight, adminRaisedRed } from "./adminButtonStyles";
+
 type ConfirmCancelReservationModalProps = {
   isOpen: boolean;
   referenceId: string;
@@ -72,7 +74,7 @@ export default function ConfirmCancelReservationModal({
             type="button"
             onClick={onCancel}
             disabled={isCancelling}
-            className="rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
           >
             Keep reservation
           </button>
@@ -80,7 +82,7 @@ export default function ConfirmCancelReservationModal({
             type="button"
             onClick={onConfirm}
             disabled={isCancelling}
-            className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedRed}`}
           >
             {isCancelling ? "Cancelling..." : "Cancel reservation"}
           </button>

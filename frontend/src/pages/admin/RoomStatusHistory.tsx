@@ -5,6 +5,7 @@ import {
   type RoomStatusHistoryEntry,
 } from "../../services/roomStatusHistory.service";
 import { ErrorState } from "../../components/ui/States";
+import { adminRaisedLight } from "../../components/ui/adminButtonStyles";
 
 const statusStyles: Record<RoomStatus, string> = {
   AVAILABLE: "bg-green-100 text-green-700",
@@ -186,7 +187,7 @@ export default function RoomStatusHistory() {
                 type="button"
                 aria-label="Close status change details"
                 onClick={() => setSelectedEntry(null)}
-                className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                className={`rounded-lg px-3 py-2 text-sm text-gray-700 ${adminRaisedLight}`}
               >
                 Close
               </button>

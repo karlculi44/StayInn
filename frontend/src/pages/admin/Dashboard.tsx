@@ -6,6 +6,7 @@ import {
   type MonthlyBookingTrend,
 } from "../../services/dashboard.service";
 import { ErrorState } from "../../components/ui/States";
+import { adminRaisedSage } from "../../components/ui/adminButtonStyles";
 import {
   Bar,
   BarChart,
@@ -187,7 +188,7 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
           <ErrorState message={error} />
           {!stats && (
             <button
-              className="mt-3 rounded-lg border border-sage/30 px-4 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`mt-3 rounded-lg px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${adminRaisedSage}`}
               disabled={isLoading || isRefreshing}
               onClick={refreshStats}
               type="button"
@@ -237,7 +238,7 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                 </div>
 
                 <button
-                  className="rounded-lg border border-sage/30 px-4 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`rounded-lg px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${adminRaisedSage}`}
                   disabled={isRefreshing || isLoading}
                   onClick={refreshStats}
                   type="button"
@@ -334,7 +335,7 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                     <button
                       type="button"
                       onClick={() => void refreshMonthlyTrends()}
-                      className="rounded-lg border border-sage/30 px-4 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5"
+                      className={`rounded-lg px-4 py-2 text-sm font-semibold ${adminRaisedSage}`}
                     >
                       Try again
                     </button>
