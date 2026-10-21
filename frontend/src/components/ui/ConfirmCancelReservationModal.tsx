@@ -23,7 +23,7 @@ export default function ConfirmCancelReservationModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5"
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/50 px-5"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isCancelling) {
@@ -36,7 +36,7 @@ export default function ConfirmCancelReservationModal({
         aria-modal="true"
         aria-labelledby="confirm-cancel-title"
         aria-describedby="confirm-cancel-description"
-        className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 shadow-xl"
+        className="w-full max-w-md cursor-default rounded-2xl border border-amber-200 bg-white p-6 shadow-xl"
       >
         <div className="flex items-start gap-4">
           <div

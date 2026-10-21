@@ -356,7 +356,7 @@ export default function Rooms() {
         <div
           className={
             editingRoomId
-              ? "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
+              ? "fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-y-auto bg-black/50 p-4"
               : "mt-8 rounded-2xl bg-white p-6"
           }
           role={editingRoomId ? "presentation" : undefined}
@@ -376,7 +376,7 @@ export default function Rooms() {
             aria-labelledby={editingRoomId ? "room-form-title" : undefined}
             className={
               editingRoomId
-                ? "my-auto max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-cream p-5 shadow-xl sm:p-7"
+                ? "my-auto max-h-[calc(100vh-2rem)] w-full max-w-2xl cursor-default overflow-y-auto rounded-2xl bg-cream p-5 shadow-xl sm:p-7"
                 : ""
             }
           >

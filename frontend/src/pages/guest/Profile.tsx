@@ -464,7 +464,7 @@ export default function Profile({
 
       {isPasswordModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-y-auto bg-black/50 p-4"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !isChangingPassword) {
@@ -476,7 +476,7 @@ export default function Profile({
             role="dialog"
             aria-modal="true"
             aria-labelledby="change-password-title"
-            className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl sm:p-7"
+            className="my-auto w-full max-w-lg cursor-default rounded-2xl bg-white p-6 shadow-xl sm:p-7"
           >
             <h2 id="change-password-title" className="font-display text-2xl">
               Update password

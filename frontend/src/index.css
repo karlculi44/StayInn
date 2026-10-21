@@ -43,6 +43,17 @@
   }
 
   button,
+  a,
+  select {
+    @apply cursor-pointer;
+  }
+
+  button:disabled,
+  select:disabled {
+    @apply cursor-not-allowed;
+  }
+
+  button,
   a {
     transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
     transition-duration: 200ms;

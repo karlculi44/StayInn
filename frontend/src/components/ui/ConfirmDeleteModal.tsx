@@ -24,7 +24,7 @@ export default function ConfirmDeleteModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5"
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/50 px-5"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isDeleting) {
@@ -37,7 +37,7 @@ export default function ConfirmDeleteModal({
         aria-modal="true"
         aria-labelledby="confirm-delete-title"
         aria-describedby="confirm-delete-description"
-        className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-xl"
+        className="w-full max-w-md cursor-default rounded-2xl border border-red-200 bg-white p-6 shadow-xl"
       >
         <div className="flex items-start gap-4">
           <div
