@@ -99,9 +99,10 @@ export default function Reservations() {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userLoadError, setUserLoadError] = useState("");
   const [guestSearch, setGuestSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<
-    Pick<AdminUser, "id" | "firstName" | "lastName" | "email"> | null
-  >(null);
+  const [selectedUser, setSelectedUser] = useState<Pick<
+    AdminUser,
+    "id" | "firstName" | "lastName" | "email"
+  > | null>(null);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guestCount, setGuestCount] = useState("1");
@@ -158,7 +159,10 @@ export default function Reservations() {
           (room) => room.status === "AVAILABLE",
         );
         setAvailableRooms(eligibleRooms);
-        if (initialRoomId && eligibleRooms.some((room) => room.id === initialRoomId)) {
+        if (
+          initialRoomId &&
+          eligibleRooms.some((room) => room.id === initialRoomId)
+        ) {
           setSelectedRoomId(initialRoomId);
         }
       }
@@ -394,7 +398,10 @@ export default function Reservations() {
   };
 
   const openEditForm = (reservation: AdminReservation) => {
-    if (reservation.status !== "PENDING" && reservation.status !== "CONFIRMED") {
+    if (
+      reservation.status !== "PENDING" &&
+      reservation.status !== "CONFIRMED"
+    ) {
       return;
     }
 
@@ -568,7 +575,9 @@ export default function Reservations() {
                   id="create-reservation-title"
                   className="mt-2 font-display text-3xl"
                 >
-                  {editingReservation ? "Edit Reservation" : "Create Reservation"}
+                  {editingReservation
+                    ? "Edit Reservation"
+                    : "Create Reservation"}
                 </h2>
                 <p className="mt-2 text-sm text-muted">
                   {editingReservation

@@ -48,6 +48,10 @@ export default function AppRoutes() {
           <Route path="/admin/room-types" element={<RoomTypes />} />
           <Route path="/admin/reservations" element={<AdminReservations />} />
           <Route path="/admin/users" element={<Users />} />
+          <Route
+            path="/admin/profile"
+            element={<Profile showLogout={false} />}
+          />
         </Route>
       </Route>
     </Routes>
