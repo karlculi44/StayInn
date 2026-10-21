@@ -1,9 +1,19 @@
 import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../utils/AppError.js";
-import { isRequestOriginAllowed } from "../utils/originPolicy.js";
+import {
+  getAllowedFrontendOrigins,
+  isRequestOriginAllowed,
+} from "../utils/originPolicy.js";
 import { env } from "../config/runtime.js";
 
 const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const allowedFrontendOrigins = getAllowedFrontendOrigins(
+  [
+    env.FRONTEND_URL,
+    ...(env.LAN_FRONTEND_URL ? [env.LAN_FRONTEND_URL] : []),
+  ],
+  env.NODE_ENV,
+);
 
 export function verifyRequestOrigin(
   req: Request,
@@ -18,10 +28,7 @@ export function verifyRequestOrigin(
   if (
     !isRequestOriginAllowed(
       req.get("Origin"),
-      [
-        env.FRONTEND_URL,
-        ...(env.LAN_FRONTEND_URL ? [env.LAN_FRONTEND_URL] : []),
-      ],
+      allowedFrontendOrigins,
       env.NODE_ENV,
     )
   ) {

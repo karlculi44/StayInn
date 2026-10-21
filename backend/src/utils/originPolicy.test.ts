@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getAllowedFrontendOrigins,
   isRequestOriginAllowed,
   isTrustedOrigin,
 } from "./originPolicy.js";
@@ -21,6 +22,32 @@ describe("request Origin policy", () => {
     expect(
       isRequestOriginAllowed("http://192.168.1.26:5173", allowedOrigins, "development"),
     ).toBe(false);
+  });
+
+  it("keeps localhost development origins allowed alongside the configured LAN origin", () => {
+    const allowedOrigins = getAllowedFrontendOrigins(
+      [trustedOrigin, "http://192.168.1.25:5173"],
+      "development",
+    );
+
+    expect(
+      isRequestOriginAllowed("http://localhost:5173", allowedOrigins, "development"),
+    ).toBe(true);
+    expect(
+      isRequestOriginAllowed("http://127.0.0.1:5173", allowedOrigins, "development"),
+    ).toBe(true);
+    expect(
+      isRequestOriginAllowed("http://192.168.1.25:5173", allowedOrigins, "development"),
+    ).toBe(true);
+    expect(
+      isRequestOriginAllowed("http://192.168.1.26:5173", allowedOrigins, "development"),
+    ).toBe(false);
+  });
+
+  it("does not add development origins to the production allowlist", () => {
+    expect(getAllowedFrontendOrigins(trustedOrigin, "production")).toEqual([
+      trustedOrigin,
+    ]);
   });
 
   it("rejects an untrusted origin without suffix matching", () => {

@@ -12,18 +12,23 @@ import helmet from "helmet";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { verifyRequestOrigin } from "./middleware/origin.middleware.js";
 import { prisma } from "./lib/prisma.js";
+import { getAllowedFrontendOrigins } from "./utils/originPolicy.js";
 
 const app = express();
+const allowedFrontendOrigins = getAllowedFrontendOrigins(
+  [
+    env.FRONTEND_URL,
+    ...(env.LAN_FRONTEND_URL ? [env.LAN_FRONTEND_URL] : []),
+  ],
+  env.NODE_ENV,
+);
 
 app.set("trust proxy", 1);
 
 app.use(helmet());
 app.use(
   cors({
-    origin: [
-      env.FRONTEND_URL,
-      ...(env.LAN_FRONTEND_URL ? [env.LAN_FRONTEND_URL] : []),
-    ],
+    origin: allowedFrontendOrigins,
     credentials: true,
   }),
 );

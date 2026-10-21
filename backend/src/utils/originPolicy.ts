@@ -1,6 +1,24 @@
 import type { Environment } from "../config/env.js";
 
 const serializedOriginPattern = /^https?:\/\/[^/?#]+$/i;
+const localDevelopmentOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
+export function getAllowedFrontendOrigins(
+  frontendOrigins: string | readonly string[],
+  nodeEnv: Environment["NODE_ENV"],
+): string[] {
+  const configuredOrigins =
+    typeof frontendOrigins === "string" ? [frontendOrigins] : frontendOrigins;
+
+  if (nodeEnv === "production") {
+    return [...configuredOrigins];
+  }
+
+  return [...new Set([...configuredOrigins, ...localDevelopmentOrigins])];
+}
 
 export function isTrustedOrigin(
   origin: string | undefined,
