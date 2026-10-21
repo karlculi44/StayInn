@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { prisma } from "../lib/prisma.js";
 
@@ -96,28 +97,103 @@ export const getDashboardStats = asyncHandler(
   },
 );
 
+// Whitelisted SQL fragments only; never built from user input.
+const TREND_RANGES = {
+  "12m": {
+    unit: "month",
+    step: "1 month",
+    start: "date_trunc('month', now_utc) - INTERVAL '11 months'",
+    end: "date_trunc('month', now_utc)",
+    format: "YYYY-MM",
+  },
+  "3m": {
+    unit: "week",
+    step: "1 week",
+    start: "date_trunc('week', now_utc) - INTERVAL '12 weeks'",
+    end: "date_trunc('week', now_utc)",
+    format: "YYYY-MM-DD",
+  },
+  "30d": {
+    unit: "day",
+    step: "1 day",
+    start: "date_trunc('day', now_utc) - INTERVAL '29 days'",
+    end: "date_trunc('day', now_utc)",
+    format: "YYYY-MM-DD",
+  },
+  "3w": {
+    unit: "day",
+    step: "1 day",
+    start: "date_trunc('day', now_utc) - INTERVAL '20 days'",
+    end: "date_trunc('day', now_utc)",
+    format: "YYYY-MM-DD",
+  },
+  week: {
+    unit: "day",
+    step: "1 day",
+    start: "date_trunc('week', now_utc)",
+    end: "date_trunc('week', now_utc) + INTERVAL '6 days'",
+    format: "YYYY-MM-DD",
+  },
+  "7d": {
+    unit: "day",
+    step: "1 day",
+    start: "date_trunc('day', now_utc) - INTERVAL '6 days'",
+    end: "date_trunc('day', now_utc)",
+    format: "YYYY-MM-DD",
+  },
+  "3d": {
+    unit: "day",
+    step: "1 day",
+    start: "date_trunc('day', now_utc) - INTERVAL '2 days'",
+    end: "date_trunc('day', now_utc)",
+    format: "YYYY-MM-DD",
+  },
+  today: {
+    unit: "hour",
+    step: "1 hour",
+    start: "date_trunc('day', now_utc)",
+    end: "date_trunc('day', now_utc) + INTERVAL '23 hours'",
+    format: 'YYYY-MM-DD"T"HH24:00',
+  },
+} as const;
+
+type TrendRange = keyof typeof TREND_RANGES;
+
 export const getMonthlyBookingTrends = asyncHandler(
-  async (_req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
+    const rangeParam = typeof req.query.range === "string" ? req.query.range : "12m";
+
+    if (!Object.hasOwn(TREND_RANGES, rangeParam)) {
+      res.status(400).json({ message: "Invalid range" });
+      return;
+    }
+
+    const config = TREND_RANGES[rangeParam as TrendRange];
+
     const monthlyTrends = await prisma.$queryRaw<
       { month: string; reservationCount: number }[]
-    >`
-      WITH month_range AS (
+    >(Prisma.sql`
+      WITH bounds AS (
+        SELECT CURRENT_TIMESTAMP AT TIME ZONE 'UTC' AS now_utc
+      ),
+      bucket_range AS (
         SELECT generate_series(
-          date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC') - INTERVAL '11 months',
-          date_trunc('month', CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
-          INTERVAL '1 month'
-        ) AS month_start
+          ${Prisma.raw(config.start)},
+          ${Prisma.raw(config.end)},
+          INTERVAL '${Prisma.raw(config.step)}'
+        ) AS bucket_start
+        FROM bounds
       )
       SELECT
-        to_char(month_range.month_start, 'YYYY-MM') AS month,
+        to_char(bucket_range.bucket_start, '${Prisma.raw(config.format)}') AS month,
         COUNT(reservation.id)::int AS "reservationCount"
-      FROM month_range
+      FROM bucket_range
       LEFT JOIN "Reservation" AS reservation
-        ON reservation."createdAt" >= month_range.month_start
-        AND reservation."createdAt" < month_range.month_start + INTERVAL '1 month'
-      GROUP BY month_range.month_start
-      ORDER BY month_range.month_start
-    `;
+        ON reservation."createdAt" >= bucket_range.bucket_start
+        AND reservation."createdAt" < bucket_range.bucket_start + INTERVAL '${Prisma.raw(config.step)}'
+      GROUP BY bucket_range.bucket_start
+      ORDER BY bucket_range.bucket_start
+    `);
 
     res.json(monthlyTrends);
   },

@@ -22,11 +22,22 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   return response.data;
 };
 
-export const getMonthlyBookingTrends = async (): Promise<
-  MonthlyBookingTrend[]
-> => {
+export type BookingTrendRange =
+  | "today"
+  | "3d"
+  | "week"
+  | "7d"
+  | "3w"
+  | "30d"
+  | "3m"
+  | "12m";
+
+export const getMonthlyBookingTrends = async (
+  range: BookingTrendRange = "12m",
+): Promise<MonthlyBookingTrend[]> => {
   const response = await api.get<MonthlyBookingTrend[]>(
     "/admin/dashboard/monthly-booking-trends",
+    { params: { range } },
   );
 
   return response.data;

@@ -172,6 +172,32 @@ describe("Monthly booking trends", () => {
     }
   });
 
+  it("supports date range presets and rejects unknown ranges", async () => {
+    const expectedLengths = {
+      today: 24,
+      "3d": 3,
+      week: 7,
+      "7d": 7,
+      "3w": 21,
+      "30d": 30,
+      "3m": 13,
+      "12m": 12,
+    };
+
+    for (const [range, length] of Object.entries(expectedLengths)) {
+      const response = await request(app)
+        .get(`/api/admin/dashboard/monthly-booking-trends?range=${range}`)
+        .set("Cookie", `accessToken=${adminToken}`);
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(length);
+    }
+
+    const invalid = await request(app)
+      .get("/api/admin/dashboard/monthly-booking-trends?range=bogus")
+      .set("Cookie", `accessToken=${adminToken}`);
+    expect(invalid.status).toBe(400);
+  });
+
   it("requires administrator authorization", async () => {
     const unauthenticatedResponse = await request(app).get(
       "/api/admin/dashboard/monthly-booking-trends",

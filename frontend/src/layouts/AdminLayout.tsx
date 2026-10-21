@@ -2,6 +2,7 @@ import { Outlet, Link, NavLink } from "react-router-dom";
 import AdminSidebar from "../components/AdminSidebar";
 import ProfileDropdown from "../components/ui/ProfileDropdown";
 import ThemeToggle from "../components/ui/ThemeToggle";
+import PageTransition from "../components/ui/PageTransition";
 
 const links = [
   { label: "Home", to: "/" },
@@ -58,7 +59,9 @@ export default function AdminLayout() {
       <div className="pt-32 lg:flex lg:pt-20">
         <AdminSidebar />
         <main className="min-w-0 flex-1 p-5 lg:ml-64 lg:p-10">
-          <Outlet />
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
     </div>

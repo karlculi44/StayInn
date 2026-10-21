@@ -2,11 +2,19 @@ import { useEffect, useState } from "react";
 import {
   getDashboardStats,
   getMonthlyBookingTrends,
+  type BookingTrendRange,
   type DashboardStats,
   type MonthlyBookingTrend,
 } from "../../services/dashboard.service";
 import { ErrorState } from "../../components/ui/States";
 import { adminRaisedSage } from "../../components/ui/adminButtonStyles";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import {
   Bar,
   BarChart,
@@ -23,12 +31,46 @@ import {
 
 type TooltipSnapshot = { name: string | number | undefined; count: number };
 
-const formatTrendMonth = (month: string) =>
-  new Intl.DateTimeFormat("en-US", {
+const TREND_RANGE_OPTIONS: {
+  value: BookingTrendRange;
+  label: string;
+  description: string;
+  noun: string;
+}[] = [
+  { value: "today", label: "Today", description: "hour · today", noun: "hour" },
+  { value: "3d", label: "Last 3 days", description: "day · last 3 days", noun: "day" },
+  { value: "week", label: "This week", description: "day · this week (Mon–Sun)", noun: "day" },
+  { value: "7d", label: "Last 7 days", description: "day · last 7 days", noun: "day" },
+  { value: "3w", label: "Last 3 weeks", description: "day · last 3 weeks", noun: "day" },
+  { value: "30d", label: "Last 30 days", description: "day · last 30 days", noun: "day" },
+  { value: "3m", label: "Last 3 months", description: "week · last 3 months", noun: "week" },
+  { value: "12m", label: "Last 12 months", description: "month · latest 12 calendar months", noun: "month" },
+];
+
+// Bucket labels arrive as YYYY-MM (month), YYYY-MM-DD (day/week) or YYYY-MM-DDTHH:00 (hour).
+const formatTrendMonth = (bucket: string) => {
+  if (bucket.length === 7) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      year: "2-digit",
+      timeZone: "UTC",
+    }).format(new Date(`${bucket}-01T00:00:00.000Z`));
+  }
+
+  if (bucket.length > 10) {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      hour12: true,
+      timeZone: "UTC",
+    }).format(new Date(`${bucket}:00Z`));
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
     month: "short",
-    year: "2-digit",
+    day: "numeric",
     timeZone: "UTC",
-  }).format(new Date(`${month}-01T00:00:00.000Z`));
+  }).format(new Date(`${bucket}T00:00:00.000Z`));
+};
 
 // Remembers the last hovered segment so its content stays rendered while fading out.
 function ReservationTooltip({
@@ -77,6 +119,8 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
   const [monthlyTrends, setMonthlyTrends] = useState<MonthlyBookingTrend[]>([]);
   const [isMonthlyTrendsLoading, setIsMonthlyTrendsLoading] = useState(true);
   const [monthlyTrendsError, setMonthlyTrendsError] = useState("");
+  const [trendRange, setTrendRange] = useState<BookingTrendRange>("12m");
+  const [trendReloadKey, setTrendReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -97,30 +141,42 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadMonthlyTrends = async () => {
       try {
-        setMonthlyTrends(await getMonthlyBookingTrends());
+        const data = await getMonthlyBookingTrends(trendRange);
+        if (!cancelled) {
+          setMonthlyTrends(data);
+        }
       } catch {
-        setMonthlyTrendsError("Unable to load monthly booking trends.");
+        if (!cancelled) {
+          setMonthlyTrendsError("Unable to load booking trends.");
+        }
       } finally {
-        setIsMonthlyTrendsLoading(false);
+        if (!cancelled) {
+          setIsMonthlyTrendsLoading(false);
+        }
       }
     };
 
     void loadMonthlyTrends();
-  }, []);
 
-  const refreshMonthlyTrends = async () => {
+    return () => {
+      cancelled = true;
+    };
+  }, [trendRange, trendReloadKey]);
+
+  const changeTrendRange = (value: BookingTrendRange) => {
     setMonthlyTrendsError("");
     setIsMonthlyTrendsLoading(true);
+    setTrendRange(value);
+  };
 
-    try {
-      setMonthlyTrends(await getMonthlyBookingTrends());
-    } catch {
-      setMonthlyTrendsError("Unable to load monthly booking trends.");
-    } finally {
-      setIsMonthlyTrendsLoading(false);
-    }
+  const refreshMonthlyTrends = () => {
+    setMonthlyTrendsError("");
+    setIsMonthlyTrendsLoading(true);
+    setTrendReloadKey((key) => key + 1);
   };
 
   const refreshStats = async () => {
@@ -313,13 +369,35 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
             </section>
 
             <section className="min-w-0 rounded-2xl bg-white p-5 sm:p-6">
-              <div>
-                <h2 className="font-display text-2xl">
-                  Monthly Booking Trends
-                </h2>
-                <p className="mt-1 text-sm text-muted">
-                  Reservations created per month · latest 12 calendar months
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-2xl">Booking Trends</h2>
+                  <p className="mt-1 text-sm text-muted">
+                    Reservations created per{" "}
+                    {TREND_RANGE_OPTIONS.find((o) => o.value === trendRange)
+                      ?.description}
+                  </p>
+                </div>
+                <Select
+                  value={trendRange}
+                  onValueChange={(value) =>
+                    changeTrendRange(value as BookingTrendRange)
+                  }
+                >
+                  <SelectTrigger
+                    aria-label="Booking trend date range"
+                    className="w-44"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TREND_RANGE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="relative mt-4 h-80 w-full">
@@ -334,7 +412,7 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                     </p>
                     <button
                       type="button"
-                      onClick={() => void refreshMonthlyTrends()}
+                      onClick={refreshMonthlyTrends}
                       className={`rounded-lg px-4 py-2 text-sm font-semibold ${adminRaisedSage}`}
                     >
                       Try again
@@ -404,7 +482,7 @@ export default function AdminPage({ title = "Overview" }: { title?: string }) {
                       (entry) => entry.reservationCount === 0,
                     ) ? (
                       <p className="pointer-events-none absolute inset-x-0 top-[42%] text-center text-sm text-muted">
-                        No booking activity in the last 12 months
+                        No booking activity in this period
                       </p>
                     ) : null}
                   </>
