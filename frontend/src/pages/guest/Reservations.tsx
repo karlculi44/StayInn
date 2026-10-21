@@ -152,6 +152,62 @@ export default function Reservations() {
                   : "reservations"}
               </span>
             </div>
+            {filteredReservations.length > 0 && (
+              <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-muted">
+                  Reservations per page
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(0);
+                    }}
+                  >
+                    <SelectTrigger
+                      aria-label="Reservations per page"
+                      className="h-9 w-20 rounded-lg px-2.5 py-1.5"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={String(option)}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                  <span
+                    className="whitespace-nowrap text-muted"
+                    aria-live="polite"
+                  >
+                    Page {visiblePage + 1} of {pageCount}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={visiblePage === 0}
+                      onClick={() => setCurrentPage(visiblePage - 1)}
+                      className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={visiblePage >= pageCount - 1}
+                      onClick={() => setCurrentPage(visiblePage + 1)}
+                      className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             {filteredReservations.length === 0 ? (
               <EmptyState
                 title="No reservations found"

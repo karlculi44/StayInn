@@ -41,7 +41,8 @@ const statusOptions: Array<"ALL" | ReservationStatus> = [
   "COMPLETED",
 ];
 
-const pageSize = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const DEFAULT_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
 
 type ReservationFormErrors = Partial<
   Record<"guest" | "checkIn" | "checkOut" | "guests" | "room", string>
@@ -78,6 +79,7 @@ export default function Reservations() {
           statusFilter?: "ALL" | ReservationStatus;
           sortBy?: "checkIn" | "createdAt";
           currentPage?: number;
+          pageSize?: number;
         };
       }
     | null;
@@ -98,6 +100,11 @@ export default function Reservations() {
   );
   const [currentPage, setCurrentPage] = useState(
     previousListState?.currentPage ?? 1,
+  );
+  const [pageSize, setPageSize] = useState(
+    PAGE_SIZE_OPTIONS.includes(previousListState?.pageSize ?? DEFAULT_PAGE_SIZE)
+      ? (previousListState?.pageSize ?? DEFAULT_PAGE_SIZE)
+      : DEFAULT_PAGE_SIZE,
   );
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -957,21 +964,21 @@ export default function Reservations() {
                 emptyMessage="No matching reservations."
                 enableSorting={false}
                 pageSize={pageSize}
-                showPageSize={false}
-                showPagination={totalPages > 1}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                showPageSize
+                showPagination
                 pagination={reservationTablePagination}
                 onPaginationChange={(updater) => {
-                  setCurrentPage((currentPage) => {
-                    const currentPagination = {
-                      pageIndex: currentPage - 1,
-                      pageSize,
-                    };
-                    const nextPagination =
-                      typeof updater === "function"
-                        ? updater(currentPagination)
-                        : updater;
-                    return nextPagination.pageIndex + 1;
-                  });
+                  const currentPagination = {
+                    pageIndex: pageToDisplay - 1,
+                    pageSize,
+                  };
+                  const nextPagination =
+                    typeof updater === "function"
+                      ? updater(currentPagination)
+                      : updater;
+                  setPageSize(nextPagination.pageSize);
+                  setCurrentPage(nextPagination.pageIndex + 1);
                 }}
                 tableClassName="min-w-240"
                 getRowProps={(reservation) => ({
@@ -986,6 +993,7 @@ export default function Reservations() {
                           statusFilter,
                           sortBy,
                           currentPage: pageToDisplay,
+                          pageSize,
                         },
                       },
                     }),
@@ -1000,6 +1008,7 @@ export default function Reservations() {
                             statusFilter,
                             sortBy,
                             currentPage: pageToDisplay,
+                            pageSize,
                           },
                         },
                       });

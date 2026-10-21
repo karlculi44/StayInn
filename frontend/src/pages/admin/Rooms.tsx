@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   createRoom,
   deleteRoom,
@@ -37,6 +38,8 @@ type RoomType = {
   name: string;
 };
 
+const PAGE_SIZE_OPTIONS = [6, 12, 24];
+
 const roomStatusStyles: Record<RoomStatus, string> = {
   AVAILABLE: "bg-green-100 text-green-700",
   MAINTENANCE: "bg-yellow-100 text-yellow-800",
@@ -44,6 +47,7 @@ const roomStatusStyles: Record<RoomStatus, string> = {
 };
 
 export default function Rooms() {
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState<RoomListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,6 +56,8 @@ export default function Rooms() {
   const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
   const [capacityFilter, setCapacityFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | RoomStatus>("ALL");
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [currentPage, setCurrentPage] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [roomNumber, setRoomNumber] = useState("");
   const [roomTypeId, setRoomTypeId] = useState("");
@@ -112,6 +118,12 @@ export default function Rooms() {
       );
     });
   }, [rooms, searchTerm, roomTypeFilter, capacityFilter, statusFilter]);
+  const pageCount = Math.max(1, Math.ceil(filteredRooms.length / pageSize));
+  const visiblePage = Math.min(currentPage, pageCount - 1);
+  const visibleRooms = filteredRooms.slice(
+    visiblePage * pageSize,
+    (visiblePage + 1) * pageSize,
+  );
 
   const capacityOptions = useMemo(
     () =>
@@ -126,6 +138,7 @@ export default function Rooms() {
     setRoomTypeFilter("ALL");
     setCapacityFilter("ALL");
     setStatusFilter("ALL");
+    setCurrentPage(0);
   };
 
   const closeActionsMenu = () => {
@@ -268,6 +281,59 @@ export default function Rooms() {
   };
 
   const editingRoom = rooms.find((room) => room.id === editingRoomId);
+  const renderRoomPagination = (className: string) => (
+    <div
+      className={`flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between ${className}`}
+    >
+      <label className="flex items-center gap-2 text-muted">
+        Rooms per page
+        <Select
+          value={String(pageSize)}
+          onValueChange={(value) => {
+            setPageSize(Number(value));
+            setCurrentPage(0);
+          }}
+        >
+          <SelectTrigger
+            aria-label="Rooms per page"
+            className="h-9 w-20 rounded-lg px-2.5 py-1.5"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZE_OPTIONS.map((option) => (
+              <SelectItem key={option} value={String(option)}>
+                {option}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </label>
+      <div className="flex items-center justify-between gap-4 sm:justify-end">
+        <span className="whitespace-nowrap text-muted" aria-live="polite">
+          Page {visiblePage + 1} of {pageCount}
+        </span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={visiblePage === 0}
+            onClick={() => setCurrentPage(visiblePage - 1)}
+            className={`rounded-lg px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            disabled={visiblePage >= pageCount - 1}
+            onClick={() => setCurrentPage(visiblePage + 1)}
+            className={`rounded-lg px-3 py-1.5 font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -514,7 +580,10 @@ export default function Rooms() {
                   id="room-search"
                   type="search"
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setCurrentPage(0);
+                  }}
                   placeholder="e.g. 105"
                   className="w-full rounded-xl border px-4 py-3 text-sm"
                 />
@@ -527,7 +596,13 @@ export default function Rooms() {
                 >
                   Room Type
                 </label>
-                <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+                <Select
+                  value={roomTypeFilter}
+                  onValueChange={(value) => {
+                    setRoomTypeFilter(value);
+                    setCurrentPage(0);
+                  }}
+                >
                   <SelectTrigger id="room-type-filter" className="text-sm">
                     <SelectValue />
                   </SelectTrigger>
@@ -549,7 +624,13 @@ export default function Rooms() {
                 >
                   Capacity
                 </label>
-                <Select value={capacityFilter} onValueChange={setCapacityFilter}>
+                <Select
+                  value={capacityFilter}
+                  onValueChange={(value) => {
+                    setCapacityFilter(value);
+                    setCurrentPage(0);
+                  }}
+                >
                   <SelectTrigger id="room-capacity-filter" className="text-sm">
                     <SelectValue />
                   </SelectTrigger>
@@ -573,9 +654,10 @@ export default function Rooms() {
                 </label>
                 <Select
                   value={statusFilter}
-                  onValueChange={(value) =>
-                    setStatusFilter(value as "ALL" | RoomStatus)
-                  }
+                  onValueChange={(value) => {
+                    setStatusFilter(value as "ALL" | RoomStatus);
+                    setCurrentPage(0);
+                  }}
                 >
                   <SelectTrigger id="room-status-filter" className="text-sm">
                     <SelectValue />
@@ -609,8 +691,10 @@ export default function Rooms() {
           </div>
 
           {filteredRooms.length > 0 ? (
-            <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredRooms.map((room) => {
+            <>
+              {renderRoomPagination("mt-5")}
+              <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {visibleRooms.map((room) => {
                 const image = getRoomTypeImage(
                   room.roomType.name,
                   room.roomType.image,
@@ -619,9 +703,22 @@ export default function Rooms() {
                 return (
                   <article
                     key={room.id}
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`View details for room ${room.roomNumber}`}
+                    onClick={() => navigate(`/admin/rooms/${room.id}`)}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target === event.currentTarget &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        navigate(`/admin/rooms/${room.id}`);
+                      }
+                    }}
                     className={`relative rounded-2xl border border-black/5 bg-white shadow-sm transition-shadow hover:shadow-md ${
                       actionsMenu?.id === room.id ? "z-20" : ""
-                    }`}
+                    } cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-sage`}
                   >
                     <div className="relative h-48 overflow-hidden rounded-t-2xl bg-cream">
                       <div
@@ -666,6 +763,7 @@ export default function Rooms() {
                           <button
                             type="button"
                             aria-label={`Actions for room ${room.roomNumber}`}
+                            onClick={(event) => event.stopPropagation()}
                             className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full border-t border-t-white border-b border-b-black/20 bg-white/95 text-ink shadow-[0_2px_0_rgba(0,0,0,0.16),0_4px_8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] hover:bg-white active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
                           >
                             <svg
@@ -738,7 +836,9 @@ export default function Rooms() {
                   </article>
                 );
               })}
-            </div>
+              </div>
+              {renderRoomPagination("mt-6 border-t border-black/10 pt-4")}
+            </>
           ) : (
             <div className="mt-5 rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
               <h2 className="font-display text-2xl">

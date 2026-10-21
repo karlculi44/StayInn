@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   getRoomStatusHistory,
@@ -108,14 +109,12 @@ export default function RoomStatusHistory() {
         accessorKey: "reason",
         header: "Reason",
         cell: ({ row }) => (
-          <button
-            type="button"
-            onClick={() => setSelectedEntry(row.original)}
+          <span
             title={row.original.reason}
-            className="block max-w-[20rem] truncate text-left text-sage hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+            className="block max-w-[20rem] truncate"
           >
             {row.original.reason}
-          </button>
+          </span>
         ),
         enableSorting: false,
       },
@@ -206,6 +205,19 @@ export default function RoomStatusHistory() {
             : "No history entries match your search."
         }
         tableClassName="min-w-[54rem]"
+        getRowProps={(entry) => ({
+          tabIndex: 0,
+          "aria-label": `View status change details for room ${entry.room?.roomNumber ?? "deleted room"}`,
+          onClick: () => setSelectedEntry(entry),
+          onKeyDown: (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setSelectedEntry(entry);
+            }
+          },
+          className:
+            "cursor-pointer outline-none focus-visible:bg-cream/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sage",
+        })}
       />
 
       {selectedEntry && (
@@ -236,14 +248,24 @@ export default function RoomStatusHistory() {
                   Status Change Details
                 </h2>
               </div>
-              <button
-                type="button"
-                aria-label="Close status change details"
-                onClick={() => setSelectedEntry(null)}
-                className={`rounded-lg px-3 py-2 text-sm text-gray-700 ${adminRaisedLight}`}
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedEntry.room && (
+                  <Link
+                    to={`/admin/rooms/${selectedEntry.room.id}`}
+                    className="rounded-lg px-3 py-2 text-sm font-semibold text-sage hover:bg-sage/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                  >
+                    Go to room
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  aria-label="Close status change details"
+                  onClick={() => setSelectedEntry(null)}
+                  className={`rounded-lg px-3 py-2 text-sm text-gray-700 ${adminRaisedLight}`}
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             <dl className="mt-6 grid grid-cols-1 gap-4 rounded-2xl bg-gray-50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">

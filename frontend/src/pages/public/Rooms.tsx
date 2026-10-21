@@ -15,12 +15,16 @@ import { formatCurrency } from "../../utils/format";
 import { getRoomTypeImage } from "../../utils/room-image";
 import SectionTitle from "../SectionTitle";
 
+const PAGE_SIZE_OPTIONS = [6, 12, 24];
+
 export default function Rooms() {
   const [rooms, setRooms] = useState<RoomListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [roomTypeFilter, setRoomTypeFilter] = useState("ALL");
+  const [pageSize, setPageSize] = useState(6);
+  const [currentPage, setCurrentPage] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -68,6 +72,12 @@ export default function Rooms() {
         : rooms.filter((room) => room.roomType.id === roomTypeFilter),
     [rooms, roomTypeFilter],
   );
+  const pageCount = Math.max(1, Math.ceil(filteredRooms.length / pageSize));
+  const visiblePage = Math.min(currentPage, pageCount - 1);
+  const visibleRooms = filteredRooms.slice(
+    visiblePage * pageSize,
+    (visiblePage + 1) * pageSize,
+  );
 
   const roomStatuses = {
     AVAILABLE: { label: "Available", styles: "bg-sage/10 text-sage" },
@@ -96,7 +106,13 @@ export default function Rooms() {
           >
             Room type
           </label>
-          <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+          <Select
+            value={roomTypeFilter}
+            onValueChange={(value) => {
+              setRoomTypeFilter(value);
+              setCurrentPage(0);
+            }}
+          >
             <SelectTrigger id="public-room-type-filter">
               <SelectValue />
             </SelectTrigger>
@@ -143,68 +159,174 @@ export default function Rooms() {
         </div>
       )}
       {!isLoading && !hasError && filteredRooms.length > 0 && (
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredRooms.map((room) => {
-            const status = roomStatuses[room.status];
-            const image = getRoomTypeImage(
-              room.roomType.name,
-              room.roomType.image,
-            );
-
-            return (
-              <article
-                key={room.id}
-                className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm"
+        <>
+          <div className="mt-6 flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex items-center gap-2 text-muted">
+              Rooms per page
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(0);
+                }}
               >
-                <div className="aspect-4/3 overflow-hidden">
-                  <img
-                    src={image}
-                    alt={`${room.roomType.name} at StayInn`}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="flex flex-1 flex-col p-6">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-gold">
-                        Room {room.roomNumber}
-                      </p>
-                      <h2 className="mt-2 font-display text-2xl">
-                        {room.roomType.name}
-                      </h2>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.styles}`}
-                    >
-                      {status.label}
-                    </span>
+                <SelectTrigger
+                  aria-label="Rooms per page"
+                  className="h-9 w-20 rounded-lg px-2.5 py-1.5"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={String(option)}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <div className="flex items-center justify-between gap-4 sm:justify-end">
+              <span className="whitespace-nowrap text-muted" aria-live="polite">
+                Page {visiblePage + 1} of {pageCount}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={visiblePage === 0}
+                  onClick={() => setCurrentPage(visiblePage - 1)}
+                  className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={visiblePage >= pageCount - 1}
+                  onClick={() => setCurrentPage(visiblePage + 1)}
+                  className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleRooms.map((room) => {
+              const status = roomStatuses[room.status];
+              const image = getRoomTypeImage(
+                room.roomType.name,
+                room.roomType.image,
+              );
+
+              return (
+                <article
+                  key={room.id}
+                  className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm"
+                >
+                  <div className="aspect-4/3 overflow-hidden">
+                    <img
+                      src={image}
+                      alt={`${room.roomType.name} at StayInn`}
+                      className="h-full w-full object-cover"
+                    />
                   </div>
-                  <p className="mt-4 flex-1 text-sm leading-6 text-muted">
-                    {room.roomType.description}
-                  </p>
-                  <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-black/10 pt-4">
-                    <div>
-                      <p className="text-sm text-muted">
-                        Up to {room.roomType.capacity} guests
-                      </p>
-                      <p className="mt-1 text-sm text-muted">
-                        <span className="font-semibold text-ink">
-                          {formatCurrency(Number(room.roomType.pricePerNight))}
-                        </span>{" "}
-                        / night
-                      </p>
+                  <div className="flex flex-1 flex-col p-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gold">
+                          Room {room.roomNumber}
+                        </p>
+                        <h2 className="mt-2 font-display text-2xl">
+                          {room.roomType.name}
+                        </h2>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.styles}`}
+                      >
+                        {status.label}
+                      </span>
                     </div>
-                    <Link
-                      to={`/rooms/${room.id}`}
-                      className="text-sm font-semibold text-sage hover:text-sage-dark"
-                    >
-                      View Details →
-                    </Link>
+                    <p className="mt-4 flex-1 text-sm leading-6 text-muted">
+                      {room.roomType.description}
+                    </p>
+                    <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-black/10 pt-4">
+                      <div>
+                        <p className="text-sm text-muted">
+                          Up to {room.roomType.capacity} guests
+                        </p>
+                        <p className="mt-1 text-sm text-muted">
+                          <span className="font-semibold text-ink">
+                            {formatCurrency(Number(room.roomType.pricePerNight))}
+                          </span>{" "}
+                          / night
+                        </p>
+                      </div>
+                      <Link
+                        to={`/rooms/${room.id}`}
+                        className="text-sm font-semibold text-sage hover:text-sage-dark"
+                      >
+                        View Details →
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
+        </>
+      )}
+      {!isLoading && !hasError && filteredRooms.length > 0 && (
+        <div className="mt-6 flex flex-col gap-3 border-t border-black/10 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex items-center gap-2 text-muted">
+            Rooms per page
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => {
+                setPageSize(Number(value));
+                setCurrentPage(0);
+              }}
+            >
+              <SelectTrigger
+                aria-label="Rooms per page"
+                className="h-9 w-20 rounded-lg px-2.5 py-1.5"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="flex items-center justify-between gap-4 sm:justify-end">
+            <span className="whitespace-nowrap text-muted" aria-live="polite">
+              Page {visiblePage + 1} of {pageCount}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={visiblePage === 0}
+                onClick={() => setCurrentPage(visiblePage - 1)}
+                className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={visiblePage >= pageCount - 1}
+                onClick={() => setCurrentPage(visiblePage + 1)}
+                className="px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

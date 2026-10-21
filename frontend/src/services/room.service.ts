@@ -13,6 +13,12 @@ export const getAllRoomsForAdmin = async () => {
   return response.data;
 };
 
+export const getAdminRoom = async (id: string): Promise<RoomListing> => {
+  const response = await api.get<RoomListing>(`/rooms/admin/${id}`);
+
+  return response.data;
+};
+
 export const getRoom = async (id: string): Promise<RoomListing> => {
   const response = await api.get<RoomListing>(`/rooms/${id}`);
 

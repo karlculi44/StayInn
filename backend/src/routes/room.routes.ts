@@ -9,6 +9,7 @@ import {
   getAvailableRoomsForAdmin,
   updateRoomStatus,
   getAllRoomsForAdmin,
+  getAdminRoomById,
 } from "../controllers/room.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 import {
@@ -25,6 +26,12 @@ const router = Router();
 router.get("/", getRooms);
 
 router.get("/admin", verifyToken, authorize("ADMIN"), getAllRoomsForAdmin);
+router.get(
+  "/admin/:id",
+  verifyToken,
+  authorize("ADMIN"),
+  getAdminRoomById,
+);
 
 router.get(
   "/availability/admin",

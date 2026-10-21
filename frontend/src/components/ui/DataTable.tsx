@@ -93,6 +93,57 @@ export default function DataTable<TData>({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
+      {showPagination && (showPageSize || pageCount > 1) && (
+        <div className="flex flex-col gap-3 border-b border-black/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          {showPageSize && (
+            <label className="flex items-center gap-2 text-muted">
+              Rows per page
+              <Select
+                value={String(currentPagination.pageSize)}
+                onValueChange={(value) => table.setPageSize(Number(value))}
+              >
+                <SelectTrigger
+                  aria-label="Rows per page"
+                  className="h-9 w-20 rounded-lg px-2.5 py-1.5"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizeOptions.map((option) => (
+                    <SelectItem key={option} value={String(option)}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          )}
+          <div className="flex items-center justify-between gap-4 sm:justify-end">
+            <span className="whitespace-nowrap text-muted" aria-live="polite">
+              Page {Math.min(currentPagination.pageIndex + 1, pageCount)} of{" "}
+              {pageCount}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={!table.getCanPreviousPage()}
+                onClick={() => table.previousPage()}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={!table.getCanNextPage()}
+                onClick={() => table.nextPage()}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Table className={tableClassName}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (

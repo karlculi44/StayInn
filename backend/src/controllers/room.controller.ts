@@ -33,6 +33,22 @@ export const getAllRoomsForAdmin = asyncHandler(
   },
 );
 
+export const getAdminRoomById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const id = getStringParam(req.params.id, "room ID");
+    const room = await prisma.room.findUnique({
+      where: { id },
+      include: { roomType: true },
+    });
+
+    if (!room) {
+      throw new AppError("Room not found", 404);
+    }
+
+    res.json(room);
+  },
+);
+
 export const getRoomById = asyncHandler(async (req: Request, res: Response) => {
   const id = getStringParam(req.params.id, "room ID");
 
