@@ -145,3 +145,20 @@ export function validateApiUrl(
 
   return value;
 }
+
+export function validateProfileImageMaxSizeMb(
+  value: string | undefined,
+): number {
+  if (value === undefined || value.trim() === "") {
+    return 5;
+  }
+
+  const maxSizeMb = Number(value);
+  if (!Number.isInteger(maxSizeMb) || maxSizeMb < 1 || maxSizeMb > 20) {
+    throw new Error(
+      "VITE_PROFILE_IMAGE_MAX_SIZE_MB must be a whole number between 1 and 20.",
+    );
+  }
+
+  return maxSizeMb;
+}

@@ -115,6 +115,19 @@ Troubleshooting:
 - **CORS or invalid-origin errors:** make sure `LAN_FRONTEND_URL` exactly matches `http://YOUR-LAN-IP:5173` and `VITE_API_URL` uses `http://YOUR-LAN-IP:5000/api`, then restart both servers. Do not add a trailing path or use a wildcard origin.
 - **Login/session issues:** use the frontend URL with the same LAN IP configured in both files, ensure the browser allows cookies, and verify requests use the API URL with `http://` and port `5000`. The LAN HTTP setup is for trusted-network testing only.
 
+## Profile pictures
+
+Profile pictures are stored on the backend filesystem under `backend\uploads\profile-images` by default, with a generated filename recorded on the corresponding user. Upload and retrieval routes use the authenticated user's session. The backend verifies the declared image MIME type against the file signature and accepts JPEG, PNG, and WebP up to 5 MB.
+
+Apply the included database migration after updating the code:
+
+```powershell
+Set-Location backend
+npx prisma migrate deploy
+```
+
+`PROFILE_IMAGE_UPLOAD_DIR` can point to a different directory; relative paths resolve from the backend working directory. Ensure the backend service account can read and write that directory, keep it on persistent storage, and include it in backups. For a deployed or office server, mount a persistent volume and set this variable to its absolute path. Do not place uploads in a temporary directory or expose the directory with a general-purpose static file server. `PROFILE_IMAGE_MAX_SIZE_MB` sets the backend limit (1–20 MB, default 5); set `VITE_PROFILE_IMAGE_MAX_SIZE_MB` in the frontend environment to the same value so client validation agrees. These settings are not secrets.
+
 ## Production configuration
 
 Provide backend settings through the deployment environment or a secrets manager, not a committed `.env` file:
@@ -125,6 +138,8 @@ Provide backend settings through the deployment environment or a secrets manager
 - `FRONTEND_URL` set to the deployed frontend origin
 - `PORT` if required by the hosting platform
 - `HOST` if required by the hosting platform (defaults to `0.0.0.0` in production)
+- `PROFILE_IMAGE_UPLOAD_DIR` set to persistent writable storage
+- `PROFILE_IMAGE_MAX_SIZE_MB` and matching frontend `VITE_PROFILE_IMAGE_MAX_SIZE_MB`
 
 Generate separate cryptographically random JWT secrets (for example, run `openssl rand -hex 32` twice) and set each result as its corresponding secret in the deployment provider. Production startup requires both secrets to be at least 32 characters, rejects known placeholders, and rejects identical values. The 32-character minimum is a conservative length floor; generating 32 random bytes provides 256 bits of entropy. Do not paste secret values into source control, logs, or frontend `VITE_` settings.
 

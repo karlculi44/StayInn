@@ -38,14 +38,6 @@ export default function AdminSidebar() {
         ))}
       </nav>
       <div className="mt-6 border-t border-black/5 pt-6 lg:mt-auto">
-        <NavLink
-          to="/admin/profile"
-          className={({ isActive }) =>
-            `mb-1 block rounded-xl px-3 py-2.5 text-sm font-medium ${isActive ? "bg-sage text-white" : "text-muted hover:bg-cream hover:text-ink"}`
-          }
-        >
-          Profile
-        </NavLink>
         <button
           type="button"
           onClick={handleLogout}

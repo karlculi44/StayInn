@@ -49,6 +49,18 @@ export const changeMyPassword = async (
   await api.patch("/auth/me/password", { currentPassword, newPassword });
 };
 
+export const uploadMyProfilePicture = async (
+  image: File,
+): Promise<{ profilePictureUrl: string }> => {
+  const response = await api.put<{ profilePictureUrl: string }>(
+    "/auth/me/profile-picture",
+    image,
+    { headers: { "Content-Type": image.type } },
+  );
+
+  return response.data;
+};
+
 export const logout = async () => {
   const response = await api.post("/auth/logout");
 

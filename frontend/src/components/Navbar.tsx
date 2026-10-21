@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { ButtonLink } from "./ui/Button";
 import { useAuth } from "../context/useAuth";
+import ProfileAvatar from "./ui/ProfileAvatar";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
@@ -35,26 +36,12 @@ export default function Navbar() {
           {!isLoading &&
             (user ? (
               <NavLink
-                to="/profile"
+                to={user.role === "ADMIN" ? "/admin/profile" : "/profile"}
                 aria-label="View profile"
                 title="View profile"
-                className="inline-flex size-9 items-center justify-center rounded-full text-ink hover:text-sage focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  className="size-5"
-                >
-                  <circle cx="12" cy="8" r="3.5" />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5.5 20a6.5 6.5 0 0 1 13 0"
-                  />
-                </svg>
+                <ProfileAvatar profilePictureUrl={user.profilePictureUrl} />
               </NavLink>
             ) : (
               <>

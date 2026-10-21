@@ -10,6 +10,13 @@ import bcrypt from "bcrypt";
 import { env } from "../config/runtime.js";
 import { getAuthCookieOptions } from "../config/authCookieOptions.js";
 import { hashPassword } from "../utils/password.js";
+import {
+  getProfilePictureUrl,
+  readProfilePicture,
+  removeProfilePicture,
+  storeProfilePicture,
+  validateProfilePicture,
+} from "../services/profilePicture.js";
 
 const authCookieOptions = getAuthCookieOptions(env.NODE_ENV);
 
@@ -141,6 +148,7 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
       firstName: true,
       lastName: true,
       email: true,
+      profilePicture: true,
       role: true,
       createdAt: true,
     },
@@ -150,7 +158,11 @@ export const getMe = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("User not found", 404);
   }
 
-  res.json(user);
+  const { profilePicture, ...profile } = user;
+  res.json({
+    ...profile,
+    profilePictureUrl: getProfilePictureUrl(profilePicture),
+  });
 });
 
 export const updateProfile = asyncHandler(
@@ -187,6 +199,7 @@ export const updateProfile = asyncHandler(
           firstName: true,
           lastName: true,
           email: true,
+          profilePicture: true,
           role: true,
           createdAt: true,
         },
@@ -202,7 +215,98 @@ export const updateProfile = asyncHandler(
         throw error;
       });
 
-    res.json(user);
+    const { profilePicture, ...profile } = user;
+    res.json({
+      ...profile,
+      profilePictureUrl: getProfilePictureUrl(profilePicture),
+    });
+  },
+);
+
+export const uploadMyProfilePicture = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    if (!Buffer.isBuffer(req.body)) {
+      throw new AppError("Profile picture file is required", 400);
+    }
+
+    const format = validateProfilePicture(
+      req.body,
+      req.get("Content-Type"),
+    );
+    const userId = req.user.userId;
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { profilePicture: true },
+    });
+
+    if (!currentUser) {
+      throw new AppError("User not found", 404);
+    }
+
+    const profilePicture = await storeProfilePicture(
+      req.body,
+      format.extension,
+    );
+
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { profilePicture },
+      });
+    } catch (error: unknown) {
+      try {
+        await removeProfilePicture(profilePicture);
+      } catch (cleanupError: unknown) {
+        console.error("Unable to clean up unlinked profile image:", cleanupError);
+      }
+
+      throw error;
+    }
+
+    if (currentUser.profilePicture) {
+      try {
+        await removeProfilePicture(currentUser.profilePicture);
+      } catch (error: unknown) {
+        console.error("Unable to remove replaced profile image:", error);
+      }
+    }
+
+    res.json({
+      profilePictureUrl: getProfilePictureUrl(profilePicture),
+    });
+  },
+);
+
+export const getMyProfilePicture = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { profilePicture: true },
+    });
+
+    if (!user?.profilePicture) {
+      throw new AppError("Profile picture not found", 404);
+    }
+
+    const { image, contentType } = await readProfilePicture(
+      user.profilePicture,
+    );
+
+    res
+      .status(200)
+      .type(contentType)
+      .set("Cache-Control", "private, max-age=31536000, immutable")
+      .set("Cross-Origin-Resource-Policy", "cross-origin")
+      .set("X-Content-Type-Options", "nosniff")
+      .send(image);
   },
 );
 

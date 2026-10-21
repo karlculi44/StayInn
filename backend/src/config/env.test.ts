@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resolve } from "node:path";
 import { parseEnv } from "./env.js";
 
 const validEnvironment: Record<string, string | undefined> = {
@@ -24,6 +25,10 @@ describe("parseEnv", () => {
     expect(environment.LAN_FRONTEND_URL).toBeUndefined();
     expect(environment.PORT).toBe(5000);
     expect(environment.HOST).toBe("127.0.0.1");
+    expect(environment.PROFILE_IMAGE_MAX_SIZE_MB).toBe(5);
+    expect(environment.PROFILE_IMAGE_UPLOAD_DIR).toBe(
+      resolve("uploads", "profile-images"),
+    );
   });
 
   it("parses valid test configuration with the development frontend default", () => {
@@ -53,6 +58,18 @@ describe("parseEnv", () => {
       parseEnv({ ...validEnvironment, HOST: "192.168.1.25" }),
     ).toThrow("HOST");
   });
+
+  it.each(["0", "21", "1.5", "abc"])(
+    "rejects invalid profile image size limit %j",
+    (size) => {
+      expect(() =>
+        parseEnv({
+          ...validEnvironment,
+          PROFILE_IMAGE_MAX_SIZE_MB: size,
+        }),
+      ).toThrow("PROFILE_IMAGE_MAX_SIZE_MB");
+    },
+  );
 
   it("requires NODE_ENV to be explicit", () => {
     expect(() =>

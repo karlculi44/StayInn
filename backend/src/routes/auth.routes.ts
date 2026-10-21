@@ -1,5 +1,6 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { authRateLimiter } from "../middleware/rateLimit.middleware.js";
+import { env } from "../config/runtime.js";
 import {
   register,
   login,
@@ -8,6 +9,8 @@ import {
   updateProfile,
   changePassword,
   refresh,
+  getMyProfilePicture,
+  uploadMyProfilePicture,
 } from "../controllers/auth.controller.js";
 import {
   registerSchema,
@@ -25,6 +28,16 @@ router.post("/login", authRateLimiter, validate(loginSchema), login);
 router.post("/logout", logout);
 router.post("/refresh", authRateLimiter, refresh);
 router.get("/me", verifyToken, getMe);
+router.get("/me/profile-picture", verifyToken, getMyProfilePicture);
+router.put(
+  "/me/profile-picture",
+  verifyToken,
+  express.raw({
+    type: () => true,
+    limit: env.PROFILE_IMAGE_MAX_SIZE_MB * 1024 * 1024,
+  }),
+  uploadMyProfilePicture,
+);
 router.patch("/me", verifyToken, validate(updateProfileSchema), updateProfile);
 router.patch(
   "/me/password",

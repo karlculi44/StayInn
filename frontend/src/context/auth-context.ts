@@ -5,6 +5,7 @@ export type User = {
   firstName: string;
   lastName: string;
   email: string;
+  profilePictureUrl: string | null;
   role: "GUEST" | "ADMIN";
   createdAt: string;
 };

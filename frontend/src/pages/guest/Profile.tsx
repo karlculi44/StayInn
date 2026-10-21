@@ -1,4 +1,11 @@
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import axios from "axios";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
@@ -8,12 +15,27 @@ import {
   adminRaisedSage,
 } from "../../components/ui/adminButtonStyles";
 import { useAuth } from "../../context/useAuth";
+import ProfileAvatar from "../../components/ui/ProfileAvatar";
+import { validateProfileImageMaxSizeMb } from "../../config/env";
 import {
   changeMyPassword,
+  uploadMyProfilePicture,
   updateMyProfile,
 } from "../../services/auth.services";
 
-export default function Profile({ showLogout = true }: { showLogout?: boolean }) {
+const acceptedProfilePictureTypes = ["image/jpeg", "image/png", "image/webp"];
+const maxProfilePictureBytes =
+  validateProfileImageMaxSizeMb(
+    import.meta.env.VITE_PROFILE_IMAGE_MAX_SIZE_MB,
+  ) *
+  1024 *
+  1024;
+
+export default function Profile({
+  showLogout = true,
+}: {
+  showLogout?: boolean;
+}) {
   const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -29,6 +51,24 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [selectedPicture, setSelectedPicture] = useState<File | null>(null);
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [pictureError, setPictureError] = useState("");
+  const [pictureSuccess, setPictureSuccess] = useState("");
+  const pictureInputRef = useRef<HTMLInputElement>(null);
+  const picturePreviewUrl = useMemo(
+    () => (selectedPicture ? URL.createObjectURL(selectedPicture) : null),
+    [selectedPicture],
+  );
+
+  useEffect(
+    () => () => {
+      if (picturePreviewUrl) {
+        URL.revokeObjectURL(picturePreviewUrl);
+      }
+    },
+    [picturePreviewUrl],
+  );
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -85,6 +125,67 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
       }
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function handlePictureSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setPictureError("");
+    setPictureSuccess("");
+
+    if (!acceptedProfilePictureTypes.includes(file.type)) {
+      setSelectedPicture(null);
+      setPictureError("Choose a JPEG, PNG, or WebP image.");
+      return;
+    }
+
+    if (file.size > maxProfilePictureBytes) {
+      setSelectedPicture(null);
+      setPictureError(
+        `Choose an image no larger than ${maxProfilePictureBytes / (1024 * 1024)} MB.`,
+      );
+      return;
+    }
+
+    setSelectedPicture(file);
+  }
+
+  async function handlePictureUpload() {
+    if (!selectedPicture || !user) {
+      return;
+    }
+
+    setIsUploadingPicture(true);
+    setPictureError("");
+    setPictureSuccess("");
+
+    try {
+      const result = await uploadMyProfilePicture(selectedPicture);
+      setUser({ ...user, profilePictureUrl: result.profilePictureUrl });
+      setSelectedPicture(null);
+      setPictureSuccess("Your profile picture was updated.");
+    } catch (uploadError: unknown) {
+      setSelectedPicture(null);
+      if (axios.isAxiosError(uploadError)) {
+        const responseData = uploadError.response?.data as
+          | { message?: string }
+          | undefined;
+        setPictureError(
+          responseData?.message ?? "Unable to upload your profile picture.",
+        );
+      } else {
+        setPictureError(
+          "An unexpected error occurred while uploading your profile picture.",
+        );
+      }
+    } finally {
+      setIsUploadingPicture(false);
     }
   }
 
@@ -169,10 +270,83 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
         </p>
       )}
 
-      <section
-        aria-label="Profile information"
-        className="mt-8 max-w-2xl rounded-2xl border border-black/10 bg-white p-6"
-      >
+      <div className="mt-8 grid max-w-5xl gap-6 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.5fr)]">
+        <section
+          aria-label="Profile picture"
+          className="h-fit rounded-2xl border border-black/10 bg-white p-6"
+        >
+          <h2 className="font-display text-2xl">Profile picture</h2>
+          <div className="mt-6 flex flex-col items-center text-center">
+            <ProfileAvatar
+              profilePictureUrl={
+                picturePreviewUrl ?? user.profilePictureUrl
+              }
+              className="size-36 border-4 border-cream shadow-sm"
+            />
+            <p className="mt-4 max-w-full break-all text-sm font-semibold text-ink">
+              {selectedPicture
+                ? `Selected: ${selectedPicture.name}`
+                : `${user.firstName} ${user.lastName}`}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              JPEG, PNG, or WebP · up to{" "}
+              {maxProfilePictureBytes / (1024 * 1024)} MB
+            </p>
+          </div>
+
+          <input
+            ref={pictureInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            aria-label="Choose a profile picture"
+            onChange={handlePictureSelection}
+          />
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isUploadingPicture}
+              className={!showLogout ? adminRaisedLight : ""}
+              onClick={() => pictureInputRef.current?.click()}
+            >
+              {user.profilePictureUrl || selectedPicture
+                ? "Choose picture"
+                : "Select picture"}
+            </Button>
+            {selectedPicture && (
+              <Button
+                type="button"
+                disabled={isUploadingPicture}
+                className={!showLogout ? adminRaisedDark : ""}
+                onClick={() => void handlePictureUpload()}
+              >
+                {isUploadingPicture ? "Uploading..." : "Upload picture"}
+              </Button>
+            )}
+          </div>
+          {pictureError && (
+            <p
+              role="alert"
+              className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              {pictureError}
+            </p>
+          )}
+          {pictureSuccess && (
+            <p
+              role="status"
+              className="mt-4 rounded-xl border border-sage/30 bg-sage/10 px-4 py-3 text-sm text-sage-dark"
+            >
+              {pictureSuccess}
+            </p>
+          )}
+        </section>
+
+        <section
+          aria-label="Profile information"
+          className="rounded-2xl border border-black/10 bg-white p-6"
+        >
         {isEditing ? (
           <form className="space-y-5" onSubmit={handleSave}>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -210,7 +384,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
             </div>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <p className="text-sm text-muted">Account type</p>
+                <p className="text-sm text-muted">Role</p>
                 <p className="mt-1 font-semibold text-ink">
                   {user.role === "ADMIN" ? "Admin" : "Guest"}
                 </p>
@@ -253,7 +427,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
                 <dd className="mt-1 font-semibold text-ink">{user.email}</dd>
               </div>
               <div>
-                <dt className="text-sm text-muted">Account type</dt>
+                <dt className="text-sm text-muted">Role</dt>
                 <dd className="mt-1 font-semibold text-ink">
                   {user.role === "ADMIN" ? "Admin" : "Guest"}
                 </dd>
@@ -285,17 +459,15 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
             </Button>
           </>
         )}
-      </section>
+        </section>
+      </div>
 
       {isPasswordModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4"
           role="presentation"
           onMouseDown={(event) => {
-            if (
-              event.target === event.currentTarget &&
-              !isChangingPassword
-            ) {
+            if (event.target === event.currentTarget && !isChangingPassword) {
               closePasswordModal();
             }
           }}
@@ -306,10 +478,7 @@ export default function Profile({ showLogout = true }: { showLogout?: boolean })
             aria-labelledby="change-password-title"
             className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl sm:p-7"
           >
-            <h2
-              id="change-password-title"
-              className="font-display text-2xl"
-            >
+            <h2 id="change-password-title" className="font-display text-2xl">
               Update password
             </h2>
             <p className="mt-2 text-sm text-muted">

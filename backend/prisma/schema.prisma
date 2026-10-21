@@ -7,17 +7,18 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  firstName String
-  lastName  String
-  email     String   @unique
-  password  String
-  role      Role     @default(GUEST)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String   @unique
+  password       String
+  profilePicture String?
+  role           Role     @default(GUEST)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  reservations Reservation[]
-  refreshTokens RefreshToken[]
+  reservations      Reservation[]
+  refreshTokens     RefreshToken[]
   roomStatusChanges RoomStatusHistory[] @relation("RoomStatusChangedBy")
 }
 

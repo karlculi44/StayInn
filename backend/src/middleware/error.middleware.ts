@@ -8,6 +8,17 @@ export const errorMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "type" in err &&
+    err.type === "entity.too.large"
+  ) {
+    return res
+      .status(413)
+      .json({ message: "Uploaded file exceeds the maximum allowed size" });
+  }
+
   console.error(err);
 
   if (err instanceof AppError) {

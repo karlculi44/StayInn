@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolve } from "node:path";
 
 function parseUrl(value: string): URL | undefined {
   try {
@@ -42,6 +43,14 @@ const portSchema = z
 
 const hostSchema = z.enum(["127.0.0.1", "0.0.0.0"]).optional();
 
+const profileImageSizeSchema = z
+  .string()
+  .regex(/^\d+$/)
+  .transform(Number)
+  .pipe(z.number().int().min(1).max(20))
+  .optional()
+  .transform((value) => value ?? 5);
+
 const minimumProductionJwtSecretLength = 32;
 const knownJwtSecretPlaceholders = new Set([
   "replace-with-a-random-local-only-access-secret",
@@ -64,6 +73,8 @@ const environmentSchema = z
     LAN_FRONTEND_URL: frontendOriginSchema.optional(),
     PORT: portSchema,
     HOST: hostSchema,
+    PROFILE_IMAGE_UPLOAD_DIR: z.string().trim().min(1).optional(),
+    PROFILE_IMAGE_MAX_SIZE_MB: profileImageSizeSchema,
   })
   .superRefine((environment, context) => {
     if (
@@ -133,6 +144,9 @@ const environmentSchema = z
     HOST:
       environment.HOST ??
       (environment.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1"),
+    PROFILE_IMAGE_UPLOAD_DIR: resolve(
+      environment.PROFILE_IMAGE_UPLOAD_DIR ?? "uploads/profile-images",
+    ),
   }));
 
 export type Environment = z.output<typeof environmentSchema>;
