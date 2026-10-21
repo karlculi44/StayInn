@@ -10,8 +10,11 @@ import {
   removeProfilePicture,
   storeProfilePicture,
 } from "../services/profilePicture.js";
+import hashToken from "../utils/hashToken.js";
 
 const createdUserIds: string[] = [];
+const createdReservationIds: string[] = [];
+const createdRoomStatusHistoryIds: string[] = [];
 const storedPictureKeys = new Set<string>();
 const pngImage = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/J1sAAAAASUVORK5CYII=",
@@ -37,6 +40,32 @@ const createTestUser = async () => {
   createdUserIds.push(user.id);
 
   return user;
+};
+
+const createTestReservation = async (
+  userId: string,
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED",
+) => {
+  const checkIn = new Date();
+  checkIn.setDate(checkIn.getDate() + 10 + createdReservationIds.length * 3);
+  const checkOut = new Date(checkIn);
+  checkOut.setDate(checkOut.getDate() + 1);
+
+  const reservation = await prisma.reservation.create({
+    data: {
+      referenceId: generateReservationReferenceId(),
+      checkIn,
+      checkOut,
+      guests: 1,
+      totalAmount: "100.00",
+      userId,
+      roomId: testRoomId,
+      status,
+    },
+  });
+
+  createdReservationIds.push(reservation.id);
+  return reservation;
 };
 
 describe("User management integration tests", () => {
@@ -94,22 +123,35 @@ describe("User management integration tests", () => {
     }
     storedPictureKeys.clear();
 
-    if (createdUserIds.length === 0) return;
+    if (createdReservationIds.length > 0) {
+      await prisma.reservation.deleteMany({
+        where: { id: { in: createdReservationIds } },
+      });
+      createdReservationIds.length = 0;
+    }
 
-    // Remove reservations before deleting their users.
-    await prisma.reservation.deleteMany({
-      where: {
-        userId: { in: createdUserIds },
-      },
-    });
+    if (createdRoomStatusHistoryIds.length > 0) {
+      await prisma.roomStatusHistory.deleteMany({
+        where: { id: { in: createdRoomStatusHistoryIds } },
+      });
+      createdRoomStatusHistoryIds.length = 0;
+    }
 
-    await prisma.user.deleteMany({
-      where: {
-        id: { in: createdUserIds },
-      },
-    });
+    if (createdUserIds.length > 0) {
+      await prisma.reservation.deleteMany({
+        where: {
+          userId: { in: createdUserIds },
+        },
+      });
 
-    createdUserIds.length = 0;
+      await prisma.user.deleteMany({
+        where: {
+          id: { in: createdUserIds },
+        },
+      });
+
+      createdUserIds.length = 0;
+    }
   });
 
   afterAll(async () => {
@@ -150,6 +192,28 @@ describe("User management integration tests", () => {
     });
 
     expect(updatedUser?.role).toBe("ADMIN");
+  });
+
+  it("rejects user deletion by unauthenticated and non-admin callers", async () => {
+    const user = await createTestUser();
+    const unauthenticatedResponse = await request(app).delete(
+      `/api/users/${user.id}`,
+    );
+    const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
+    if (!secret) {
+      throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
+    }
+    const guestToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      secret,
+      { expiresIn: "5m" },
+    );
+    const guestResponse = await request(app)
+      .delete(`/api/users/${user.id}`)
+      .set("Cookie", `accessToken=${guestToken}`);
+
+    expect(unauthenticatedResponse.status).toBe(401);
+    expect(guestResponse.status).toBe(403);
   });
 
   it("returns each user's profile picture and serves it only to admins", async () => {
@@ -305,6 +369,28 @@ describe("User management integration tests", () => {
 
   it("allows deletion of a user without reservations", async () => {
     const user = await createTestUser();
+    const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
+    if (!secret) {
+      throw new Error("JWT_ACCESS_TOKEN_SECRET is not configured.");
+    }
+    const userAccessToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      secret,
+      { expiresIn: "5m" },
+    );
+    const refreshToken = jwt.sign(
+      { userId: user.id, jti: randomUUID() },
+      process.env.JWT_REFRESH_TOKEN_SECRET as string,
+      { expiresIn: "7d" },
+    );
+    const refreshTokenHash = hashToken(refreshToken);
+    await prisma.refreshToken.create({
+      data: {
+        tokenHash: refreshTokenHash,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
 
     const response = await request(app)
       .delete(`/api/users/${user.id}`)
@@ -317,37 +403,141 @@ describe("User management integration tests", () => {
     });
 
     expect(deletedUser).toBeNull();
+    expect(
+      await prisma.refreshToken.findUnique({
+        where: { tokenHash: refreshTokenHash },
+      }),
+    ).toBeNull();
+    expect(
+      (
+        await request(app)
+          .get("/api/auth/me")
+          .set("Cookie", `accessToken=${userAccessToken}`)
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await request(app)
+          .post("/api/auth/refresh")
+          .set("Cookie", `refreshToken=${refreshToken}`)
+      ).status,
+    ).toBe(401);
   });
 
-  it("rejects deletion of a user with reservations", async () => {
+  it("preserves room status audit history while clearing the deleted admin reference", async () => {
     const user = await createTestUser();
-
-    await prisma.reservation.create({
+    const history = await prisma.roomStatusHistory.create({
       data: {
-        referenceId: generateReservationReferenceId(),
-        checkIn: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        checkOut: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        guests: 1,
-        totalAmount: "100.00",
-        userId: user.id,
+        previousStatus: "AVAILABLE",
+        newStatus: "MAINTENANCE",
+        reason: "User deletion audit test",
         roomId: testRoomId,
+        adminId: user.id,
       },
     });
+    createdRoomStatusHistoryIds.push(history.id);
 
     const response = await request(app)
       .delete(`/api/users/${user.id}`)
       .set("Cookie", `accessToken=${accessToken}`);
 
-    expect(response.status).toBe(400);
-    expect(response.body.message).toBe(
-      "User has existing reservations and cannot be deleted",
-    );
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: user.id },
+    expect(response.status).toBe(204);
+    expect(
+      await prisma.roomStatusHistory.findUnique({
+        where: { id: history.id },
+      }),
+    ).toMatchObject({
+      id: history.id,
+      reason: "User deletion audit test",
+      adminId: null,
     });
+  });
 
-    expect(existingUser).not.toBeNull();
+  it.each(["COMPLETED", "CANCELLED"] as const)(
+    "deletes a user with only %s reservations and preserves history",
+    async (status) => {
+      const user = await createTestUser();
+      const reservation = await createTestReservation(user.id, status);
+
+      const response = await request(app)
+        .delete(`/api/users/${user.id}`)
+        .set("Cookie", `accessToken=${accessToken}`);
+
+      expect(response.status).toBe(204);
+      expect(
+        await prisma.user.findUnique({ where: { id: user.id } }),
+      ).toBeNull();
+
+      const savedReservation = await prisma.reservation.findUnique({
+        where: { id: reservation.id },
+      });
+      expect(savedReservation).toMatchObject({
+        id: reservation.id,
+        status,
+        userId: null,
+      });
+
+      const adminReservationsResponse = await request(app)
+        .get("/api/reservations/admin")
+        .set("Cookie", `accessToken=${accessToken}`);
+      expect(adminReservationsResponse.status).toBe(200);
+      expect(
+        adminReservationsResponse.body.find(
+          (entry: { id: string }) => entry.id === reservation.id,
+        ).user,
+      ).toBeNull();
+    },
+  );
+
+  it.each(["PENDING", "CONFIRMED"] as const)(
+    "rejects deletion when the user has a %s reservation",
+    async (status) => {
+      const user = await createTestUser();
+      const reservation = await createTestReservation(user.id, status);
+
+      const response = await request(app)
+        .delete(`/api/users/${user.id}`)
+        .set("Cookie", `accessToken=${accessToken}`);
+
+      expect(response.status).toBe(409);
+      expect(response.body.message).toBe(
+        "Resolve pending or confirmed reservations before deleting this user",
+      );
+      expect(
+        await prisma.user.findUnique({ where: { id: user.id } }),
+      ).not.toBeNull();
+      expect(
+        await prisma.reservation.findUnique({
+          where: { id: reservation.id },
+        }),
+      ).not.toBeNull();
+    },
+  );
+
+  it("rejects deletion when historical and active reservations are mixed", async () => {
+    const user = await createTestUser();
+    const completedReservation = await createTestReservation(
+      user.id,
+      "COMPLETED",
+    );
+    const pendingReservation = await createTestReservation(user.id, "PENDING");
+
+    const response = await request(app)
+      .delete(`/api/users/${user.id}`)
+      .set("Cookie", `accessToken=${accessToken}`);
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe(
+      "Resolve pending or confirmed reservations before deleting this user",
+    );
+    expect(
+      await prisma.user.findUnique({ where: { id: user.id } }),
+    ).not.toBeNull();
+    expect(
+      await prisma.reservation.findMany({
+        where: { id: { in: [completedReservation.id, pendingReservation.id] } },
+      }),
+    ).toHaveLength(2);
   });
 
   it("returns 404 when deleting a nonexistent user", async () => {

@@ -18,7 +18,7 @@ export type AdminReservation = {
     firstName: string;
     lastName: string;
     email: string;
-  };
+  } | null;
   room: {
     id: string;
     roomNumber: string;

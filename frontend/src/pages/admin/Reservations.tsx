@@ -75,7 +75,9 @@ const formatDate = (value: string) =>
   }).format(new Date(value));
 
 const getGuestName = (reservation: AdminReservation) =>
-  `${reservation.user.firstName} ${reservation.user.lastName}`.trim();
+  reservation.user
+    ? `${reservation.user.firstName} ${reservation.user.lastName}`.trim()
+    : "Deleted user";
 
 export default function Reservations() {
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
@@ -250,7 +252,9 @@ export default function Reservations() {
         const matchesSearch =
           !normalizedSearch ||
           reservation.referenceId.toLowerCase().includes(normalizedSearch) ||
-          getGuestName(reservation).toLowerCase().includes(normalizedSearch);
+          getGuestName(reservation).toLowerCase().includes(normalizedSearch) ||
+          (reservation.user?.email.toLowerCase().includes(normalizedSearch) ??
+            false);
 
         return matchesStatus && matchesSearch;
       })
@@ -411,12 +415,16 @@ export default function Reservations() {
 
     setEditingReservation(reservation);
     setGuestSearch("");
-    setSelectedUser({
-      id: reservation.user.id,
-      firstName: reservation.user.firstName,
-      lastName: reservation.user.lastName,
-      email: reservation.user.email,
-    });
+    setSelectedUser(
+      reservation.user
+        ? {
+            id: reservation.user.id,
+            firstName: reservation.user.firstName,
+            lastName: reservation.user.lastName,
+            email: reservation.user.email,
+          }
+        : null,
+    );
     setCheckIn(reservation.checkIn.slice(0, 10));
     setCheckOut(reservation.checkOut.slice(0, 10));
     setGuestCount(String(reservation.guests));

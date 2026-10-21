@@ -184,6 +184,15 @@ export default function Users() {
         currentUsers.filter((user) => user.id !== userToDelete.id),
       );
       setUserToDelete(null);
+      setSuccessMessage("User deleted successfully.");
+
+      try {
+        setUsers(await getUsers());
+      } catch {
+        setActionError(
+          "User was deleted, but the user list could not be refreshed.",
+        );
+      }
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         setActionError(
@@ -267,6 +276,7 @@ export default function Users() {
                 <td className="px-6 py-4">
                   <ProfileAvatar
                     profilePictureUrl={user.profilePictureUrl}
+                    initials={`${user.firstName.trim().charAt(0)}${user.lastName.trim().charAt(0)}`}
                     className="size-10"
                   />
                 </td>
@@ -347,7 +357,11 @@ export default function Users() {
 
                     <button
                       type="button"
-                      onClick={() => setUserToDelete(user)}
+                      onClick={() => {
+                        setActionError("");
+                        setSuccessMessage("");
+                        setUserToDelete(user);
+                      }}
                       disabled={
                         currentUser?.id === user.id ||
                         deletingUserId !== null ||
@@ -545,11 +559,14 @@ export default function Users() {
       )}
       <ConfirmDeleteModal
         isOpen={userToDelete !== null}
+        title="Permanently delete user"
         itemName={
           userToDelete
             ? `${userToDelete.firstName} ${userToDelete.lastName}`
             : ""
         }
+        details="This permanently removes the user's account and personal details. Completed and cancelled reservation records will be retained without a link to this user."
+        errorMessage={userToDelete ? actionError : undefined}
         isDeleting={deletingUserId !== null}
         onCancel={() => setUserToDelete(null)}
         onConfirm={() => void handleDeleteUser()}

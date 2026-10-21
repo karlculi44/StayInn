@@ -87,8 +87,8 @@ model Reservation {
   totalAmount Decimal
   status      ReservationStatus @default(PENDING)
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   roomId String
   room   Room   @relation(fields: [roomId], references: [id])

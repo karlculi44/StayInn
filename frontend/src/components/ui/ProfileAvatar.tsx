@@ -2,11 +2,13 @@ import { useState } from "react";
 
 type ProfileAvatarProps = {
   profilePictureUrl: string | null;
+  initials?: string;
   className?: string;
 };
 
 export default function ProfileAvatar({
   profilePictureUrl,
+  initials,
   className = "size-9",
 }: ProfileAvatarProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -34,6 +36,8 @@ export default function ProfileAvatar({
           onError={() => setFailedUrl(profilePictureUrl)}
           className="size-full object-cover"
         />
+      ) : initials ? (
+        <span className="text-xs font-semibold uppercase">{initials}</span>
       ) : (
         <svg
           aria-hidden="true"

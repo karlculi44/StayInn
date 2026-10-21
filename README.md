@@ -47,6 +47,8 @@ npx tsx prisma/seed.ts
 
 The seed script refuses to run unless `NODE_ENV` is exactly `development`.
 
+Administrators can permanently delete a user only after all `PENDING` and `CONFIRMED` reservations are resolved. Completed and cancelled reservations, along with room-status audit history, are retained with the deleted user's reference cleared; refresh tokens are removed and profile pictures are deleted.
+
 ## Tests
 
 Tests create and delete records. Use only the dedicated, disposable local `stayinn_test` database; never point it at development or production data. From `backend`, apply the existing migrations using the test Prisma configuration, then run Vitest:

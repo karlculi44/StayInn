@@ -6,6 +6,9 @@ import {
 type ConfirmDeleteModalProps = {
   isOpen: boolean;
   itemName: string;
+  title?: string;
+  details?: string;
+  errorMessage?: string;
   isDeleting?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -14,6 +17,9 @@ type ConfirmDeleteModalProps = {
 export default function ConfirmDeleteModal({
   isOpen,
   itemName,
+  title = "Delete item",
+  details,
+  errorMessage,
   isDeleting = false,
   onCancel,
   onConfirm,
@@ -36,7 +42,11 @@ export default function ConfirmDeleteModal({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-delete-title"
-        aria-describedby="confirm-delete-description"
+        aria-describedby={
+          details
+            ? "confirm-delete-details confirm-delete-description"
+            : "confirm-delete-description"
+        }
         className="w-full max-w-md cursor-default rounded-2xl border border-red-200 bg-white p-6 shadow-xl"
       >
         <div className="flex items-start gap-4">
@@ -49,17 +59,30 @@ export default function ConfirmDeleteModal({
 
           <div>
             <h2 id="confirm-delete-title" className="font-display text-2xl">
-              Delete item
+              {title}
             </h2>
             <p className="mt-3 text-sm leading-6 text-ink">
               Are you sure you want to delete <strong>{itemName}</strong>?
             </p>
+            {details && (
+              <p
+                id="confirm-delete-details"
+                className="mt-2 text-sm leading-6 text-ink"
+              >
+                {details}
+              </p>
+            )}
             <p
               id="confirm-delete-description"
               className="mt-2 text-sm font-semibold text-red-700"
             >
               This action <strong>CANNOT</strong> be undone.
             </p>
+            {errorMessage && (
+              <p role="alert" className="mt-3 text-sm font-medium text-red-700">
+                {errorMessage}
+              </p>
+            )}
           </div>
         </div>
 
