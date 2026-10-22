@@ -1,6 +1,30 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { validateApiUrl } from "../src/config/env.ts";
+import {
+  getApiBaseUrl,
+  validateApiUrl,
+} from "../src/config/env.ts";
+
+describe("getApiBaseUrl", () => {
+  it("uses the Vite proxy for development regardless of the configured API URL", () => {
+    assert.equal(getApiBaseUrl(undefined, false), "/api");
+    assert.equal(
+      getApiBaseUrl("http://192.168.1.20:5000/api", false),
+      "/api",
+    );
+  });
+
+  it("uses and validates the configured API URL in production", () => {
+    assert.equal(
+      getApiBaseUrl("https://api.example.com/api", true),
+      "https://api.example.com/api",
+    );
+    assert.throws(
+      () => getApiBaseUrl(undefined, true),
+      /VITE_API_URL is required/,
+    );
+  });
+});
 
 describe("validateApiUrl", () => {
   it("rejects a missing API URL", () => {

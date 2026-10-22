@@ -30,6 +30,7 @@ export function verifyRequestOrigin(
       req.get("Origin"),
       allowedFrontendOrigins,
       env.NODE_ENV,
+      req.get("host") ? `${req.protocol}://${req.get("host")}` : undefined,
     )
   ) {
     next(new AppError("Invalid request origin", 403));

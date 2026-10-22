@@ -49,9 +49,18 @@ export function isRequestOriginAllowed(
   origin: string | undefined,
   frontendOrigins: string | readonly string[],
   nodeEnv: Environment["NODE_ENV"],
+  requestOrigin?: string,
 ): boolean {
   if (origin === undefined) {
     return nodeEnv !== "production";
+  }
+
+  if (
+    nodeEnv !== "production" &&
+    requestOrigin !== undefined &&
+    isTrustedOrigin(origin, requestOrigin)
+  ) {
+    return true;
   }
 
   const allowedOrigins =

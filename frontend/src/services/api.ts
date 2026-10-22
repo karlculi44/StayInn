@@ -1,13 +1,13 @@
 import axios from "axios";
-import { validateApiUrl } from "../config/env.js";
+import { getApiBaseUrl } from "../config/env.js";
 
-const baseURL = validateApiUrl(
+export const apiBaseURL = getApiBaseUrl(
   import.meta.env.VITE_API_URL,
   import.meta.env.PROD,
 );
 
 export const api = axios.create({
-  baseURL,
+  baseURL: apiBaseURL,
   withCredentials: true,
 });
 

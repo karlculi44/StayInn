@@ -119,24 +119,24 @@ export default function Home() {
         )}
       </section>
       <section className="mx-auto max-w-7xl px-5 pb-8 lg:px-8">
-        <div className="grid gap-8 rounded-3xl bg-[#e6ede8] p-8 sm:p-12 md:grid-cols-3">
+        <div className="grid gap-8 rounded-3xl         bg-(--app-sage-tint) p-8 sm:p-12 md:grid-cols-3">
           <div>
-            <p className="font-display text-3xl">01</p>
-            <p className="mt-4 font-semibold">Made for unwinding</p>
+                    <p className="font-display text-3xl text-(--app-feature-number)">01</p>
+                    <p className="mt-4 font-semibold text-ink">Made for unwinding</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               No busy lobbies or unnecessary extras. Just space to reset.
             </p>
           </div>
           <div>
-            <p className="font-display text-3xl">02</p>
-            <p className="mt-4 font-semibold">The details matter</p>
+            <p className="font-display text-3xl text-(--app-feature-number)">02</p>
+            <p className="mt-4 font-semibold text-ink">The details matter</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               Good coffee, soft sheets, and everything in its right place.
             </p>
           </div>
           <div>
-            <p className="font-display text-3xl">03</p>
-            <p className="mt-4 font-semibold">Stay your way</p>
+            <p className="font-display text-3xl text-(--app-feature-number)">03</p>
+            <p className="mt-4 font-semibold text-ink">Stay your way</p>
             <p className="mt-2 text-sm leading-6 text-muted">
               Book directly, arrive easily, and settle in at your own pace.
             </p>

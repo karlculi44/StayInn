@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { apiBaseURL } from "../../services/api";
 
 type ProfileAvatarProps = {
   profilePictureUrl: string | null;
@@ -17,7 +18,7 @@ export default function ProfileAvatar({
     try {
       imageUrl = new URL(
         profilePictureUrl,
-        import.meta.env.VITE_API_URL,
+        new URL(apiBaseURL, window.location.origin),
       ).toString();
     } catch {
       imageUrl = null;

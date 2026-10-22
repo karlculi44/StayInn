@@ -24,6 +24,44 @@ describe("request Origin policy", () => {
     ).toBe(false);
   });
 
+  it("allows a same-host Vite proxy origin in development without an IP allowlist", () => {
+    const lanOrigin = "http://192.168.1.26:5173";
+    const allowedOrigins = getAllowedFrontendOrigins(
+      trustedOrigin,
+      "development",
+    );
+
+    expect(
+      isRequestOriginAllowed(
+        lanOrigin,
+        allowedOrigins,
+        "development",
+        lanOrigin,
+      ),
+    ).toBe(true);
+    expect(
+      isRequestOriginAllowed(
+        "http://attacker.example",
+        allowedOrigins,
+        "development",
+        lanOrigin,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not accept a same-host origin as a production trust exception", () => {
+    const lanOrigin = "https://stayinn.example";
+
+    expect(
+      isRequestOriginAllowed(
+        lanOrigin,
+        "https://different.example",
+        "production",
+        lanOrigin,
+      ),
+    ).toBe(false);
+  });
+
   it("keeps localhost development origins allowed alongside the configured LAN origin", () => {
     const allowedOrigins = getAllowedFrontendOrigins(
       [trustedOrigin, "http://192.168.1.25:5173"],
