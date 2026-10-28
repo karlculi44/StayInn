@@ -19,6 +19,42 @@ export const getNotifications = asyncHandler(
   },
 );
 
+export const getUnreadNotificationCount = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const count = await prisma.notification.count({
+      where: {
+        userId: req.user.userId,
+        readAt: null,
+      },
+    });
+
+    res.json({ count });
+  },
+);
+
+export const markAllNotificationsAsRead = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const readAt = new Date();
+    const result = await prisma.notification.updateMany({
+      where: {
+        userId: req.user.userId,
+        readAt: null,
+      },
+      data: { readAt },
+    });
+
+    res.json({ count: result.count, readAt: readAt.toISOString() });
+  },
+);
+
 export const markNotificationAsRead = asyncHandler(
   async (req: Request, res: Response) => {
     if (!req.user) {

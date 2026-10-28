@@ -32,9 +32,10 @@ describe("Reservation cancellation and status transitions", () => {
   async function createTestReservation(
     userId = guestId,
     status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" = "PENDING",
+    checkInDaysFromNow = 10,
   ) {
     const checkIn = new Date();
-    checkIn.setDate(checkIn.getDate() + 10);
+    checkIn.setDate(checkIn.getDate() + checkInDaysFromNow);
     checkIn.setHours(14, 0, 0, 0);
 
     const checkOut = new Date(checkIn);
@@ -234,6 +235,13 @@ describe("Reservation cancellation and status transitions", () => {
     expect(listResponse.body).toHaveLength(1);
     expect(listResponse.body[0].id).toBe(notifications[0].id);
 
+    const unreadCountResponse = await request(app)
+      .get("/api/notifications/unread-count")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+
+    expect(unreadCountResponse.status).toBe(200);
+    expect(unreadCountResponse.body.count).toBe(1);
+
     const otherGuestListResponse = await request(app)
       .get("/api/notifications")
       .set("Cookie", authCookie(otherGuestId, "GUEST"));
@@ -248,12 +256,62 @@ describe("Reservation cancellation and status transitions", () => {
     expect(markReadResponse.status).toBe(200);
     expect(markReadResponse.body.readAt).toBeTruthy();
 
+    const updatedUnreadCountResponse = await request(app)
+      .get("/api/notifications/unread-count")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+
+    expect(updatedUnreadCountResponse.status).toBe(200);
+    expect(updatedUnreadCountResponse.body.count).toBe(0);
+
     const otherGuestResponse = await request(app)
       .patch(`/api/notifications/${notifications[0].id}/read`)
       .set("Cookie", authCookie(otherGuestId, "GUEST"));
 
     expect(otherGuestResponse.status).toBe(404);
     expect(otherGuestResponse.body.message).toBe("Notification not found");
+  });
+
+  it("allows a guest to mark all their notifications as read", async () => {
+    const firstReservation = await createTestReservation(guestId, "PENDING", 10);
+    const secondReservation = await createTestReservation(guestId, "PENDING", 15);
+    const otherGuestReservation = await createTestReservation(
+      otherGuestId,
+      "PENDING",
+      20,
+    );
+
+    for (const reservation of [
+      firstReservation,
+      secondReservation,
+      otherGuestReservation,
+    ]) {
+      const response = await request(app)
+        .patch(`/api/reservations/${reservation.id}/status`)
+        .set("Cookie", authCookie(adminId, "ADMIN"))
+        .send({ status: "CONFIRMED" });
+
+      expect(response.status).toBe(200);
+    }
+
+    const response = await request(app)
+      .patch("/api/notifications/read-all")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+
+    expect(response.status).toBe(200);
+    expect(response.body.count).toBe(2);
+    expect(response.body.readAt).toBeTruthy();
+
+    const unreadNotifications = await prisma.notification.findMany({
+      where: { userId: guestId, readAt: null },
+    });
+
+    expect(unreadNotifications).toHaveLength(0);
+
+    const otherGuestUnreadCount = await prisma.notification.count({
+      where: { userId: otherGuestId, readAt: null },
+    });
+
+    expect(otherGuestUnreadCount).toBe(1);
   });
 
   it("rejects an invalid status transition", async () => {

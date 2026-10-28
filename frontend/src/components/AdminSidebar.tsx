@@ -1,27 +1,7 @@
 import { NavLink } from "react-router-dom";
+import { adminNavigationItems } from "./adminNavigation";
 
-type AdminNavIconName =
-  | "overview"
-  | "rooms"
-  | "roomStatusHistory"
-  | "roomTypes"
-  | "reservations"
-  | "calendar"
-  | "users";
-
-const items = [
-  { label: "Overview", to: "/admin", icon: "overview" },
-  { label: "Rooms", to: "/admin/rooms", icon: "rooms" },
-  {
-    label: "Room status history",
-    to: "/admin/room-status-history",
-    icon: "roomStatusHistory",
-  },
-  { label: "Room types", to: "/admin/room-types", icon: "roomTypes" },
-  { label: "Reservations", to: "/admin/reservations", icon: "reservations" },
-  { label: "Calendar", to: "/admin/calendar", icon: "calendar" },
-  { label: "Users", to: "/admin/users", icon: "users" },
-] as const;
+type AdminNavIconName = (typeof adminNavigationItems)[number]["icon"];
 
 function AdminNavIcon({ name }: { name: AdminNavIconName }) {
   return (
@@ -87,7 +67,7 @@ function AdminNavIcon({ name }: { name: AdminNavIconName }) {
 
 export default function AdminSidebar() {
   return (
-    <aside className="w-full shrink-0 border-b border-black/5 bg-white p-4 lg:fixed lg:inset-y-0 lg:left-0 lg:top-20 lg:z-20 lg:flex lg:h-[calc(100vh-80px)] lg:w-64 lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-6">
+    <aside className="hidden w-full shrink-0 border-b border-black/5 bg-white p-4 md:block lg:fixed lg:inset-y-0 lg:left-0 lg:top-20 lg:z-20 lg:flex lg:h-[calc(100vh-80px)] lg:w-64 lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-6">
       <p className="mb-5 px-3 text-xs font-bold uppercase tracking-widest text-muted">
         Management
       </p>
@@ -95,7 +75,7 @@ export default function AdminSidebar() {
         aria-label="Admin management"
         className="flex gap-1 overflow-x-auto lg:grid"
       >
-        {items.map((item) => (
+        {adminNavigationItems.map((item) => (
           <NavLink
             end={item.to === "/admin"}
             key={item.to}

@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
 import {
   getNotifications,
+  markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "../../services/notification.service";
 import type { Notification } from "../../types/notification";
@@ -13,6 +14,7 @@ export default function Notifications() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -62,12 +64,49 @@ export default function Notifications() {
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    setActionError("");
+    setIsMarkingAllAsRead(true);
+    try {
+      const result = await markAllNotificationsAsRead();
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.readAt
+            ? notification
+            : { ...notification, readAt: result.readAt },
+        ),
+      );
+    } catch {
+      setActionError("Unable to mark all notifications as read. Please try again.");
+    } finally {
+      setIsMarkingAllAsRead(false);
+    }
+  };
+
+  const hasUnreadNotifications = notifications.some(
+    (notification) => !notification.readAt,
+  );
+
   return (
     <div>
-      <h1 className="font-display text-4xl">Notifications</h1>
-      <p className="mt-3 text-muted">
-        Updates about your reservations will appear here.
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-4xl">Notifications</h1>
+          <p className="mt-3 text-muted">
+            Updates about your reservations will appear here.
+          </p>
+        </div>
+        {!isLoading && !error && hasUnreadNotifications && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isMarkingAllAsRead}
+            onClick={() => void handleMarkAllAsRead()}
+          >
+            {isMarkingAllAsRead ? "Marking as read..." : "Mark all as read"}
+          </Button>
+        )}
+      </div>
 
       <div className="mt-8 space-y-4">
         {isLoading && <Loading label="Loading notifications..." />}

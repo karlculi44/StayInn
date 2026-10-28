@@ -1,8 +1,14 @@
+import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { ButtonLink } from "./ui/Button";
 import { useAuth } from "../context/useAuth";
+import MobileNavMenu from "./ui/MobileNavMenu";
 import ProfileDropdown from "./ui/ProfileDropdown";
 import ThemeToggle from "./ui/ThemeToggle";
+import {
+  getUnreadNotificationCount,
+  NOTIFICATIONS_UPDATED_EVENT,
+} from "../services/notification.service";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
@@ -12,6 +18,53 @@ const links = [
 export default function Navbar() {
   const { user, isLoading } = useAuth();
   const dashboardPath = user?.role === "ADMIN" ? "/admin" : "/dashboard";
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadCountUserId, setUnreadCountUserId] = useState<string>();
+  const visibleUnreadCount =
+    user?.role === "GUEST" && unreadCountUserId === user.id
+      ? unreadNotificationCount
+      : 0;
+
+  useEffect(() => {
+    if (user?.role !== "GUEST") {
+      return;
+    }
+
+    let isMounted = true;
+    const userId = user.id;
+    const refreshUnreadNotificationCount = async () => {
+      try {
+        const count = await getUnreadNotificationCount();
+        if (isMounted) {
+          setUnreadNotificationCount(count);
+          setUnreadCountUserId(userId);
+        }
+      } catch (error) {
+        console.error("Error fetching unread notification count:", error);
+      }
+    };
+
+    void refreshUnreadNotificationCount();
+    const intervalId = window.setInterval(
+      () => void refreshUnreadNotificationCount(),
+      60_000,
+    );
+    window.addEventListener("focus", refreshUnreadNotificationCount);
+    window.addEventListener(
+      NOTIFICATIONS_UPDATED_EVENT,
+      refreshUnreadNotificationCount,
+    );
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshUnreadNotificationCount);
+      window.removeEventListener(
+        NOTIFICATIONS_UPDATED_EVENT,
+        refreshUnreadNotificationCount,
+      );
+    };
+  }, [user?.id, user?.role]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-black/5 bg-cream/95">
@@ -23,12 +76,7 @@ export default function Navbar() {
           stay<span className="text-gold">inn</span>
         </Link>
         <nav className="hidden items-center justify-self-center gap-8 md:flex">
-          {[
-            ...links,
-            ...(user?.role === "GUEST"
-              ? [{ label: "Notifications", to: "/notifications" }]
-              : []),
-          ].map((link) => (
+          {links.map((link) => (
             <NavLink
               key={link.label}
               to={link.label === "Dashboard" ? dashboardPath : link.to}
@@ -44,7 +92,45 @@ export default function Navbar() {
           <ThemeToggle />
           {!isLoading &&
             (user ? (
-              <ProfileDropdown />
+              <>
+                {user.role === "GUEST" && (
+                  <Link
+                    to="/notifications"
+                    aria-label={
+                      visibleUnreadCount > 0
+                        ? `Notifications, ${visibleUnreadCount} unread`
+                        : "Notifications"
+                    }
+                    title="Notifications"
+                    className="relative inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-sage/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="size-5"
+                    >
+                      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                      <path d="M10 21h4" />
+                    </svg>
+                    {visibleUnreadCount > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
+                      >
+                        {visibleUnreadCount > 99
+                          ? "99+"
+                          : visibleUnreadCount}
+                      </span>
+                    )}
+                  </Link>
+                )}
+                <ProfileDropdown />
+              </>
             ) : (
               <>
                 <NavLink
@@ -58,6 +144,13 @@ export default function Navbar() {
                 </ButtonLink>
               </>
             ))}
+          <MobileNavMenu
+            items={links.map((link) => ({
+              ...link,
+              to: link.label === "Dashboard" ? dashboardPath : link.to,
+            }))}
+            ariaLabel="Primary navigation"
+          />
         </div>
       </div>
     </header>
