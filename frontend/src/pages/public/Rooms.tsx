@@ -149,7 +149,9 @@ export default function Rooms() {
       {!isLoading && !hasError && filteredRooms.length === 0 && (
         <div className="mt-10">
           <EmptyState
-            title={rooms.length === 0 ? "No rooms to display" : "No matching rooms"}
+            title={
+              rooms.length === 0 ? "No rooms to display" : "No matching rooms"
+            }
             message={
               rooms.length === 0
                 ? "Please check back later for room listings."
@@ -222,54 +224,58 @@ export default function Rooms() {
               return (
                 <article
                   key={room.id}
-                  className="flex h-full flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm"
+                  className="h-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <div className="aspect-4/3 overflow-hidden">
-                    <img
-                      src={image}
-                      alt={`${room.roomType.name} at StayInn`}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col p-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-gold">
-                          Room {room.roomNumber}
-                        </p>
-                        <h2 className="mt-2 font-display text-2xl">
-                          {room.roomType.name}
-                        </h2>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.styles}`}
-                      >
-                        {status.label}
-                      </span>
+                  <Link
+                    to={`/rooms/${room.id}`}
+                    className="group flex h-full flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
+                  >
+                    <div className="aspect-4/3 overflow-hidden">
+                      <img
+                        src={image}
+                        alt={`${room.roomType.name} at StayInn`}
+                        className="h-full w-full object-cover"
+                      />
                     </div>
-                    <p className="mt-4 flex-1 text-sm leading-6 text-muted">
-                      {room.roomType.description}
-                    </p>
-                    <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-black/10 pt-4">
-                      <div>
-                        <p className="text-sm text-muted">
-                          Up to {room.roomType.capacity} guests
-                        </p>
-                        <p className="mt-1 text-sm text-muted">
-                          <span className="font-semibold text-ink">
-                            {formatCurrency(Number(room.roomType.pricePerNight))}
-                          </span>{" "}
-                          / night
-                        </p>
+                    <div className="flex flex-1 flex-col p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-widest text-gold">
+                            Room {room.roomNumber}
+                          </p>
+                          <h2 className="mt-2 font-display text-2xl">
+                            {room.roomType.name}
+                          </h2>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.styles}`}
+                        >
+                          {status.label}
+                        </span>
                       </div>
-                      <Link
-                        to={`/rooms/${room.id}`}
-                        className="text-sm font-semibold text-sage hover:text-sage-dark"
-                      >
-                        View Details →
-                      </Link>
+                      <p className="mt-4 flex-1 text-sm leading-6 text-muted">
+                        {room.roomType.description}
+                      </p>
+                      <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-black/10 pt-4">
+                        <div>
+                          <p className="text-sm text-muted">
+                            Up to {room.roomType.capacity} guests
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            <span className="font-semibold text-ink">
+                              {formatCurrency(
+                                Number(room.roomType.pricePerNight),
+                              )}
+                            </span>{" "}
+                            / night
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-sage group-hover:text-sage-dark">
+                          View Details →
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </article>
               );
             })}
