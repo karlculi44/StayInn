@@ -271,7 +271,7 @@ export default function Profile({
         </p>
       )}
 
-      <div className="mt-8 grid max-w-5xl gap-6 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.5fr)]">
+      <div className="mt-8 grid w-full gap-6 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.5fr)]">
         <section
           aria-label="Profile picture"
           className="h-fit rounded-2xl border border-black/10 bg-white p-6"

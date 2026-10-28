@@ -89,7 +89,7 @@ export default function Rooms() {
   } as const;
 
   return (
-    <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
+    <div className="w-full px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <SectionTitle eyebrow="Find your stay" title="Rooms made for living">
         <div className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-muted">
           StayInn rooms
@@ -213,7 +213,7 @@ export default function Rooms() {
               </div>
             </div>
           </div>
-          <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {visibleRooms.map((room) => {
               const status = roomStatuses[room.status];
               const image = getRoomTypeImage(

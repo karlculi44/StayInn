@@ -1,8 +1,9 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminGuard, GuestGuard } from "./guards";
 import PublicLayout from "../layouts/PublicLayout";
 import GuestLayout from "../layouts/GuestLayout";
+import GuestDashboardLayout from "../layouts/GuestDashboardLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import Home from "../pages/public/Home";
 import About from "../pages/public/About";
@@ -39,10 +40,20 @@ export default function AppRoutes() {
       </Route>
       <Route element={<GuestGuard />}>
         <Route element={<GuestLayout />}>
-          <Route path="/dashboard" element={<GuestDashboard />} />
-          <Route path="/reservations" element={<GuestReservations />} />
+          <Route path="/dashboard" element={<GuestDashboardLayout />}>
+            <Route index element={<GuestDashboard />} />
+            <Route path="reservations" element={<GuestReservations />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+          <Route
+            path="/reservations"
+            element={<Navigate to="/dashboard/reservations" replace />}
+          />
           <Route path="/reservations/:id" element={<ReservationDetails />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route
+            path="/profile"
+            element={<Navigate to="/dashboard/profile" replace />}
+          />
           <Route path="/notifications" element={<Notifications />} />
         </Route>
       </Route>

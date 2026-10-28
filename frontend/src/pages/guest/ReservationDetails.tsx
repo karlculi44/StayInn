@@ -204,7 +204,7 @@ export default function ReservationDetails() {
   return (
     <div>
       <Link
-        to="/reservations"
+        to="/dashboard/reservations"
         className="mt-6 inline-block text-sm font-semibold text-sage"
       >
         ← Back to reservations

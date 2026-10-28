@@ -63,7 +63,7 @@ export default function Dashboard() {
 
       <div className="mt-10">
         <SectionTitle eyebrow="Next up" title="Your reservations">
-          <ButtonLink to="/reservations" variant="secondary">
+          <ButtonLink to="/dashboard/reservations" variant="secondary">
             See All Reservations
           </ButtonLink>
         </SectionTitle>
