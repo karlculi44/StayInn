@@ -75,6 +75,7 @@ const environmentSchema = z
     HOST: hostSchema,
     PROFILE_IMAGE_UPLOAD_DIR: z.string().trim().min(1).optional(),
     PROFILE_IMAGE_MAX_SIZE_MB: profileImageSizeSchema,
+    ROOM_TYPE_IMAGE_UPLOAD_DIR: z.string().trim().min(1).optional(),
   })
   .superRefine((environment, context) => {
     if (
@@ -146,6 +147,9 @@ const environmentSchema = z
       (environment.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1"),
     PROFILE_IMAGE_UPLOAD_DIR: resolve(
       environment.PROFILE_IMAGE_UPLOAD_DIR ?? "uploads/profile-images",
+    ),
+    ROOM_TYPE_IMAGE_UPLOAD_DIR: resolve(
+      environment.ROOM_TYPE_IMAGE_UPLOAD_DIR ?? "uploads/room-types",
     ),
   }));
 

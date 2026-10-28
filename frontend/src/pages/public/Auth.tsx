@@ -2,6 +2,7 @@ import { useAuth } from "../../context/useAuth";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Input from "../../components/Input";
+import PasswordInput from "../../components/PasswordInput";
 import { Button } from "../../components/ui/Button";
 import { ErrorState } from "../../components/ui/States";
 import {
@@ -106,22 +107,20 @@ export default function Auth({ register = false }: { register?: boolean }) {
           required
         />
 
-        <Input
+        <PasswordInput
           id="password"
           name="password"
           label="Password"
-          type="password"
           placeholder="••••••••"
           minLength={8}
           required
         />
 
         {register && (
-          <Input
+          <PasswordInput
             id="confirm-password"
             name="confirm-password"
             label="Confirm password"
-            type="password"
             placeholder="••••••••"
             minLength={8}
             required

@@ -29,6 +29,9 @@ describe("parseEnv", () => {
     expect(environment.PROFILE_IMAGE_UPLOAD_DIR).toBe(
       resolve("uploads", "profile-images"),
     );
+    expect(environment.ROOM_TYPE_IMAGE_UPLOAD_DIR).toBe(
+      resolve("uploads", "room-types"),
+    );
   });
 
   it("parses valid test configuration with the development frontend default", () => {

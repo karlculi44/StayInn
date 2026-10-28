@@ -1,3 +1,5 @@
+import { apiBaseURL } from "../services/api";
+
 const roomImages: Record<string, string> = {
   "Standard Room":
     "https://images.unsplash.com/photo-1560185008-b033106af5c3?auto=format&fit=crop&w=1200&q=80",
@@ -15,5 +17,12 @@ export function getRoomTypeImage(
   roomTypeName: string,
   image?: string | null,
 ) {
-  return image?.trim() || roomImages[roomTypeName] || defaultRoomImage;
+  const imageUrl = image?.trim();
+  if (imageUrl?.startsWith("/api/room-types/images/")) {
+    return apiBaseURL.startsWith("/")
+      ? imageUrl
+      : `${new URL(apiBaseURL).origin}${imageUrl}`;
+  }
+
+  return imageUrl || roomImages[roomTypeName] || defaultRoomImage;
 }

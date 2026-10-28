@@ -11,6 +11,21 @@ export const errorMiddleware = (
   if (
     typeof err === "object" &&
     err !== null &&
+    "name" in err &&
+    err.name === "MulterError"
+  ) {
+    if ("code" in err && err.code === "LIMIT_FILE_SIZE") {
+      return res
+        .status(413)
+        .json({ message: "Uploaded file exceeds the maximum allowed size" });
+    }
+
+    return res.status(400).json({ message: "Invalid image upload" });
+  }
+
+  if (
+    typeof err === "object" &&
+    err !== null &&
     "type" in err &&
     err.type === "entity.too.large"
   ) {

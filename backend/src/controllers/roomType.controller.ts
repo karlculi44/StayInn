@@ -3,6 +3,13 @@ import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/AppError.js";
 import { getStringParam } from "../utils/getParam.js";
+import {
+  getRoomTypeImageKey,
+  getRoomTypeImageUrl,
+  readRoomTypeImage,
+  removeRoomTypeImage,
+  storeRoomTypeImage,
+} from "../services/roomTypeImage.js";
 
 export const getRoomTypes = asyncHandler(
   async (req: Request, res: Response) => {
@@ -28,6 +35,21 @@ export const getRoomTypeById = asyncHandler(
   },
 );
 
+export const getRoomTypeImage = asyncHandler(
+  async (req: Request, res: Response) => {
+    const key = getStringParam(req.params.key, "image key");
+    const { image, contentType } = await readRoomTypeImage(key);
+
+    res
+      .status(200)
+      .type(contentType)
+      .set("Cache-Control", "public, max-age=31536000, immutable")
+      .set("Cross-Origin-Resource-Policy", "cross-origin")
+      .set("X-Content-Type-Options", "nosniff")
+      .send(image);
+  },
+);
+
 export const createRoomType = asyncHandler(
   async (req: Request, res: Response) => {
     const { name, description, capacity, pricePerNight } = req.body;
@@ -40,15 +62,31 @@ export const createRoomType = asyncHandler(
       throw new AppError("Room type already exists", 409);
     }
 
-    const roomType = await prisma.roomType.create({
-      data: {
-        name,
-        description,
-        capacity,
-        pricePerNight,
-      },
-    });
-    res.status(201).json(roomType);
+    const storedImage = req.file
+      ? await storeRoomTypeImage(req.file.buffer, req.file.mimetype)
+      : null;
+
+    try {
+      const roomType = await prisma.roomType.create({
+        data: {
+          name,
+          description,
+          capacity,
+          pricePerNight,
+          ...(storedImage ? { image: storedImage.imageUrl } : {}),
+        },
+      });
+      res.status(201).json(roomType);
+    } catch (error: unknown) {
+      if (storedImage) {
+        try {
+          await removeRoomTypeImage(storedImage.imageUrl);
+        } catch (cleanupError: unknown) {
+          console.error("Unable to clean up failed room type image:", cleanupError);
+        }
+      }
+      throw error;
+    }
   },
 );
 export const updateRoomType = asyncHandler(
@@ -82,17 +120,47 @@ export const updateRoomType = asyncHandler(
       }
     }
 
-    const updatedRoomType = await prisma.roomType.update({
-      where: {
-        id,
-      },
-      data: {
-        name,
-        description,
-        capacity,
-        pricePerNight,
-      },
-    });
+    const storedImage = req.file
+      ? await storeRoomTypeImage(req.file.buffer, req.file.mimetype)
+      : null;
+
+    let updatedRoomType;
+    try {
+      updatedRoomType = await prisma.roomType.update({
+        where: {
+          id,
+        },
+        data: {
+          name,
+          description,
+          capacity,
+          pricePerNight,
+          ...(storedImage ? { image: storedImage.imageUrl } : {}),
+        },
+      });
+    } catch (error: unknown) {
+      if (storedImage) {
+        try {
+          await removeRoomTypeImage(storedImage.imageUrl);
+        } catch (cleanupError: unknown) {
+          console.error("Unable to clean up failed room type image:", cleanupError);
+        }
+      }
+      throw error;
+    }
+
+    if (storedImage && roomType.image) {
+      try {
+        const remainingReferences = await prisma.roomType.count({
+          where: { image: roomType.image },
+        });
+        if (remainingReferences === 0) {
+          await removeRoomTypeImage(roomType.image);
+        }
+      } catch (cleanupError: unknown) {
+        console.error("Unable to remove replaced room type image:", cleanupError);
+      }
+    }
 
     res.json(updatedRoomType);
   },
@@ -115,9 +183,15 @@ export const deleteRoomType = asyncHandler(
       throw new AppError("Cannot delete room type with associated rooms", 409);
     }
 
-    await prisma.roomType.delete({
+    const deletedRoomType = await prisma.roomType.delete({
       where: { id },
     });
+
+    try {
+      await removeRoomTypeImage(deletedRoomType.image);
+    } catch (cleanupError: unknown) {
+      console.error("Unable to remove deleted room type image:", cleanupError);
+    }
 
     res.status(204).send();
   },

@@ -9,18 +9,22 @@ import {
   getRoomTypes,
   createRoomType,
   getRoomTypeById,
+  getRoomTypeImage,
   updateRoomType,
   deleteRoomType,
 } from "../controllers/roomType.controller.js";
+import { uploadRoomTypeImage } from "../middleware/roomTypeImageUpload.middleware.js";
 
 const router = express.Router();
 
 router.get("/", getRoomTypes);
+router.get("/images/:key", getRoomTypeImage);
 router.get("/:id", getRoomTypeById);
 router.post(
   "/",
   verifyToken,
   authorize("ADMIN"),
+  uploadRoomTypeImage,
   validate(createRoomTypeSchema),
   createRoomType,
 );
@@ -28,6 +32,7 @@ router.patch(
   "/:id",
   verifyToken,
   authorize("ADMIN"),
+  uploadRoomTypeImage,
   validate(updateRoomTypeSchema),
   updateRoomType,
 );

@@ -16,6 +16,7 @@ import {
 } from "../../components/ui/adminButtonStyles";
 import { useAuth } from "../../context/useAuth";
 import ProfileAvatar from "../../components/ui/ProfileAvatar";
+import PasswordInput from "../../components/PasswordInput";
 import { validateProfileImageMaxSizeMb } from "../../config/env";
 import {
   changeMyPassword,
@@ -495,44 +496,32 @@ export default function Profile({
             )}
 
             <form className="mt-5 space-y-4" onSubmit={handlePasswordChange}>
-              <label className="block text-sm font-medium text-ink">
-                Current password
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
-                  required
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                />
-              </label>
-              <label className="block text-sm font-medium text-ink">
-                New password
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
-                  required
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                />
-                <span className="mt-1 block text-xs text-muted">
-                  Must be at least 8 characters.
-                </span>
-              </label>
-              <label className="block text-sm font-medium text-ink">
-                Confirm new password
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  className="mt-2 w-full rounded-xl border border-black/15 px-4 py-3"
-                  required
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                />
-              </label>
+              <PasswordInput
+                label="Current password"
+                autoComplete="current-password"
+                required
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+              />
+              <PasswordInput
+                label="New password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+              <p className="mt-1 block text-xs text-muted">
+                Must be at least 8 characters.
+              </p>
+              <PasswordInput
+                label="Confirm new password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+              />
               <div className="flex flex-wrap justify-end gap-3 pt-2">
                 <Button
                   type="button"

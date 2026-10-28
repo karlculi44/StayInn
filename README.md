@@ -136,6 +136,12 @@ npx prisma migrate deploy
 
 `PROFILE_IMAGE_UPLOAD_DIR` can point to a different directory; relative paths resolve from the backend working directory. Ensure the backend service account can read and write that directory, keep it on persistent storage, and include it in backups. For a deployed or office server, mount a persistent volume and set this variable to its absolute path. Do not place uploads in a temporary directory or expose the directory with a general-purpose static file server. `PROFILE_IMAGE_MAX_SIZE_MB` sets the backend limit (1–20 MB, default 5); set `VITE_PROFILE_IMAGE_MAX_SIZE_MB` in the frontend environment to the same value so client validation agrees. These settings are not secrets.
 
+## Room type thumbnails
+
+Admins can upload JPEG, PNG, or WebP room type thumbnails up to 5 MB while creating or editing a room type. The backend checks both the declared MIME type and image signature. The generated filename is stored as a relative `/api/room-types/images/...` URL in the existing room type image field and served by the dedicated public image endpoint; uploads are not exposed through a general filesystem static route. Replacing or deleting a room type removes its previous local image only after the database operation succeeds and when no other room type references that URL. Existing external image URLs are left untouched.
+
+Uploads are stored under `backend\uploads\room-types` by default. `ROOM_TYPE_IMAGE_UPLOAD_DIR` can point to a different directory; relative paths resolve from the backend working directory. Ensure the backend service account can read and write the location. Use persistent storage and include it in backups for deployed environments: locally stored uploads may be lost if the production host has an ephemeral filesystem. No additional frontend or public URL configuration is required; the API client configuration is used to load thumbnails across localhost, LAN, and deployed origins.
+
 ## Production configuration
 
 Provide backend settings through the deployment environment or a secrets manager, not a committed `.env` file:

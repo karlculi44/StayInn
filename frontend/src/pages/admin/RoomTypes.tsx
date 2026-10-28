@@ -9,7 +9,9 @@ import {
 import { ErrorState, Loading } from "../../components/ui/States";
 import DataTable from "../../components/ui/DataTable";
 import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
+import RoomTypeImageUpload from "../../components/RoomTypeImageUpload";
 import axios from "axios";
+import { getRoomTypeImage } from "../../utils/room-image";
 import {
   adminRaisedDanger,
   adminRaisedDark,
@@ -23,6 +25,7 @@ type RoomType = {
   description: string;
   capacity: number;
   pricePerNight: string | number;
+  image: string | null;
 };
 
 export default function RoomTypes() {
@@ -34,6 +37,7 @@ export default function RoomTypes() {
   const [description, setDescription] = useState("");
   const [capacity, setCapacity] = useState(2);
   const [pricePerNight, setPricePerNight] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -90,6 +94,7 @@ export default function RoomTypes() {
         description: description.trim(),
         capacity,
         pricePerNight: price,
+        image: imageFile,
       });
 
       setRoomTypes((currentRoomTypes) => [...currentRoomTypes, newRoomType]);
@@ -98,6 +103,7 @@ export default function RoomTypes() {
       setDescription("");
       setCapacity(2);
       setPricePerNight("");
+      setImageFile(null);
       setIsFormOpen(false);
     } catch (error: unknown) {
       const message =
@@ -143,6 +149,7 @@ export default function RoomTypes() {
         description: description.trim(),
         capacity,
         pricePerNight: price,
+        image: imageFile,
       });
 
       setRoomTypes((currentRoomTypes) =>
@@ -156,6 +163,7 @@ export default function RoomTypes() {
       setDescription("");
       setCapacity(2);
       setPricePerNight("");
+      setImageFile(null);
       setIsFormOpen(false);
     } catch (error: unknown) {
       const message =
@@ -201,6 +209,18 @@ export default function RoomTypes() {
   const roomTypeColumns = useMemo<ColumnDef<RoomType, unknown>[]>(
     () => [
       {
+        id: "image",
+        header: "Thumbnail",
+        cell: ({ row }) => (
+          <img
+            src={getRoomTypeImage(row.original.name, row.original.image)}
+            alt={`${row.original.name} thumbnail`}
+            className="size-14 rounded-lg object-cover"
+          />
+        ),
+        enableSorting: false,
+      },
+      {
         accessorKey: "name",
         header: "Name",
         cell: ({ row }) => (
@@ -243,6 +263,7 @@ export default function RoomTypes() {
                   setDescription(roomType.description);
                   setCapacity(roomType.capacity);
                   setPricePerNight(String(roomType.pricePerNight));
+                  setImageFile(null);
                   setFormError("");
                   setIsFormOpen(true);
                 }}
@@ -264,6 +285,9 @@ export default function RoomTypes() {
       },
     ],
     [],
+  );
+  const editingRoomType = roomTypes.find(
+    (roomType) => roomType.id === editingRoomTypeId,
   );
   const filteredRoomTypes = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -292,6 +316,7 @@ export default function RoomTypes() {
             setDescription("");
             setCapacity(2);
             setPricePerNight("");
+            setImageFile(null);
             setFormError("");
             setIsFormOpen(true);
           }}
@@ -385,6 +410,13 @@ export default function RoomTypes() {
                 />
               </div>
 
+              <RoomTypeImageUpload
+                roomTypeName={name || editingRoomType?.name || "Room type"}
+                existingImage={editingRoomType?.image}
+                file={imageFile}
+                onFileChange={setImageFile}
+              />
+
               <div>
                 <label className="text-sm font-medium">Capacity (guests)</label>
                 <input
@@ -437,6 +469,7 @@ export default function RoomTypes() {
                     setDescription("");
                     setCapacity(2);
                     setPricePerNight("");
+                    setImageFile(null);
                     setFormError("");
                     setEditingRoomTypeId(null);
                   }}
