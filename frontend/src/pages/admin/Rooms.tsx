@@ -2,27 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   createRoom,
-  deleteRoom,
   getAllRoomsForAdmin,
-  updateRoom,
-  updateRoomStatus,
 } from "../../services/room.service";
 import { getRoomTypes } from "../../services/room-type.service";
 import { ErrorState } from "../../components/ui/States";
-import ConfirmDeleteModal from "../../components/ui/ConfirmDeleteModal";
 import type { RoomListing } from "../../types";
 import { getRoomTypeImage } from "../../utils/room-image";
 import {
   adminRaisedDark,
   adminRaisedLight,
 } from "../../components/ui/adminButtonStyles";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../../components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -61,14 +50,8 @@ export default function Rooms() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [roomNumber, setRoomNumber] = useState("");
   const [roomTypeId, setRoomTypeId] = useState("");
-  const [roomStatus, setRoomStatus] = useState<RoomStatus>("AVAILABLE");
-  const [statusReason, setStatusReason] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState("");
-  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
-  const [roomToDelete, setRoomToDelete] = useState<RoomListing | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [actionsMenu, setActionsMenu] = useState<RoomListing | null>(null);
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -141,48 +124,12 @@ export default function Rooms() {
     setCurrentPage(0);
   };
 
-  const closeActionsMenu = () => {
-    setActionsMenu(null);
-  };
-
-  const openEditForm = (room: RoomListing) => {
-    closeActionsMenu();
-    setEditingRoomId(room.id);
-    setRoomNumber(room.roomNumber);
-    setRoomTypeId(room.roomType.id);
-    setRoomStatus(room.status);
-    setStatusReason("");
-    setFormError("");
-    setIsFormOpen(true);
-  };
-
   const closeForm = () => {
     setIsFormOpen(false);
-    setEditingRoomId(null);
     setRoomNumber("");
     setRoomTypeId("");
-    setRoomStatus("AVAILABLE");
-    setStatusReason("");
     setFormError("");
   };
-
-  useEffect(() => {
-    if (!isFormOpen || !editingRoomId) {
-      return;
-    }
-
-    const closeEditModalOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isCreating) {
-        closeForm();
-      }
-    };
-
-    document.addEventListener("keydown", closeEditModalOnEscape);
-
-    return () => {
-      document.removeEventListener("keydown", closeEditModalOnEscape);
-    };
-  }, [isFormOpen, editingRoomId, isCreating]);
 
   const handleCreateRoom = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -210,77 +157,6 @@ export default function Rooms() {
     }
   };
 
-  const handleUpdateRoom = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!editingRoomId || !roomNumber.trim() || !roomTypeId) {
-      setFormError("Please fill in all fields.");
-      return;
-    }
-
-    if (roomStatus !== "AVAILABLE" && !statusReason.trim()) {
-      setFormError("Please provide a reason for this room status.");
-      return;
-    }
-
-    setIsCreating(true);
-    setFormError("");
-
-    try {
-      const updatedRoom = await updateRoom(editingRoomId, {
-        roomNumber: roomNumber.trim(),
-        roomTypeId,
-      });
-
-      const updatedRoomWithStatus =
-        roomStatus === rooms.find((room) => room.id === editingRoomId)?.status
-          ? updatedRoom
-          : await updateRoomStatus(
-              editingRoomId,
-              roomStatus,
-              statusReason.trim() || undefined,
-            );
-
-      setRooms((currentRooms) =>
-        currentRooms.map((room) =>
-          room.id === updatedRoomWithStatus.id ? updatedRoomWithStatus : room,
-        ),
-      );
-
-      setRoomNumber("");
-      setRoomTypeId("");
-      setRoomStatus("AVAILABLE");
-      setStatusReason("");
-      setEditingRoomId(null);
-      setIsFormOpen(false);
-    } catch (error: any) {
-      setFormError(error.response?.data?.message || "Unable to update room.");
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const handleDeleteRoom = async () => {
-    if (!roomToDelete) {
-      return;
-    }
-
-    setIsDeleting(true);
-    try {
-      await deleteRoom(roomToDelete.id);
-
-      setRooms((currentRooms) =>
-        currentRooms.filter((room) => room.id !== roomToDelete.id),
-      );
-      setRoomToDelete(null);
-    } catch (error: any) {
-      setError(error.response?.data?.message || "Unable to delete room.");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const editingRoom = rooms.find((room) => room.id === editingRoomId);
   const renderRoomPagination = (className: string) => (
     <div
       className={`flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between ${className}`}
@@ -357,100 +233,13 @@ export default function Rooms() {
       </div>
 
       {isFormOpen && (
-        <div
-          className={
-            editingRoomId
-              ? "fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-y-auto bg-black/50 p-4"
-              : "mt-8 rounded-2xl bg-white p-6"
-          }
-          role={editingRoomId ? "presentation" : undefined}
-          onMouseDown={(event) => {
-            if (
-              editingRoomId &&
-              event.target === event.currentTarget &&
-              !isCreating
-            ) {
-              closeForm();
-            }
-          }}
-        >
-          <section
-            role={editingRoomId ? "dialog" : undefined}
-            aria-modal={editingRoomId ? true : undefined}
-            aria-labelledby={editingRoomId ? "room-form-title" : undefined}
-            className={
-              editingRoomId
-                ? "my-auto max-h-[calc(100vh-2rem)] w-full max-w-2xl cursor-default overflow-y-auto rounded-2xl bg-cream p-5 shadow-xl sm:p-7"
-                : ""
-            }
-          >
+        <div className="mt-8 rounded-2xl bg-white p-6">
+          <section>
             <div className="flex items-start justify-between gap-4">
-              <h2
-                id={editingRoomId ? "room-form-title" : undefined}
-                className="font-display text-2xl"
-              >
-                {editingRoomId ? "Edit Room" : "Add Room"}
-              </h2>
-              {editingRoomId && (
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  disabled={isCreating}
-                  aria-label="Close edit room dialog"
-                  className="rounded-lg px-3 py-2 text-muted hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Close
-                </button>
-              )}
+              <h2 className="font-display text-2xl">Add Room</h2>
             </div>
 
-            {editingRoom && (
-              <div className="mt-5 grid gap-4 rounded-2xl bg-white p-4 sm:grid-cols-[10rem_1fr] sm:items-center">
-                <img
-                  src={getRoomTypeImage(
-                    editingRoom.roomType.name,
-                    editingRoom.roomType.image,
-                  )}
-                  alt={`Room ${editingRoom.roomNumber} - ${editingRoom.roomType.name}`}
-                  className="h-36 w-full rounded-xl bg-cream object-cover sm:h-28"
-                />
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                  <div>
-                    <dt className="text-muted">Room</dt>
-                    <dd className="mt-0.5 font-semibold text-ink">
-                      {editingRoom.roomNumber}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Room Type</dt>
-                    <dd className="mt-0.5 font-semibold text-ink">
-                      {editingRoom.roomType.name}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Maximum Capacity</dt>
-                    <dd className="mt-0.5 font-semibold text-ink">
-                      {editingRoom.roomType.capacity}{" "}
-                      {editingRoom.roomType.capacity === 1 ? "guest" : "guests"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted">Price per Night</dt>
-                    <dd className="mt-0.5 font-semibold text-ink">
-                      ₱
-                      {Number(
-                        editingRoom.roomType.pricePerNight,
-                      ).toLocaleString()}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            )}
-
-            <form
-              onSubmit={editingRoomId ? handleUpdateRoom : handleCreateRoom}
-              className="mt-6 space-y-4"
-            >
+            <form onSubmit={handleCreateRoom} className="mt-6 space-y-4">
               <div>
                 <label className="text-sm font-medium">Room Number</label>
 
@@ -488,44 +277,6 @@ export default function Rooms() {
                 </Select>
               </div>
 
-              {editingRoomId && (
-                <div>
-                  <label htmlFor="room-form-status" className="text-sm font-medium">
-                    Status
-                  </label>
-
-                  <Select
-                    value={roomStatus}
-                    onValueChange={(value) =>
-                      setRoomStatus(value as RoomStatus)
-                    }
-                  >
-                    <SelectTrigger id="room-form-status" className="mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AVAILABLE">Available</SelectItem>
-                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                      <SelectItem value="INACTIVE">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {editingRoomId && roomStatus !== "AVAILABLE" && (
-                <div>
-                  <label className="text-sm font-medium">Status Reason</label>
-
-                  <input
-                    type="text"
-                    value={statusReason}
-                    onChange={(event) => setStatusReason(event.target.value)}
-                    placeholder="e.g. Scheduled maintenance"
-                    className="mt-2 w-full rounded-xl border px-4 py-3"
-                  />
-                </div>
-              )}
-
               {formError && <p className="text-sm text-red-600">{formError}</p>}
 
               <div className="flex flex-wrap gap-3">
@@ -534,13 +285,7 @@ export default function Rooms() {
                   disabled={isCreating}
                   className={`rounded-full px-5 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
                 >
-                  {isCreating
-                    ? editingRoomId
-                      ? "Saving..."
-                      : "Creating..."
-                    : editingRoomId
-                      ? "Save Changes"
-                      : "Create Room"}
+                  {isCreating ? "Creating..." : "Create Room"}
                 </button>
 
                 <button
@@ -716,9 +461,7 @@ export default function Rooms() {
                         navigate(`/admin/rooms/${room.id}`);
                       }
                     }}
-                    className={`relative rounded-2xl border border-black/5 bg-white shadow-sm transition-shadow hover:shadow-md ${
-                      actionsMenu?.id === room.id ? "z-20" : ""
-                    } cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-sage`}
+                    className="relative cursor-pointer rounded-2xl border border-black/5 bg-white shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-sage"
                   >
                     <div className="relative h-48 overflow-hidden rounded-t-2xl bg-cream">
                       <div
@@ -746,57 +489,6 @@ export default function Rooms() {
                           event.currentTarget.style.display = "none";
                         }}
                       />
-
-                      <DropdownMenu
-                        open={actionsMenu?.id === room.id}
-                        onOpenChange={(isOpen) =>
-                          setActionsMenu((currentRoom) =>
-                            isOpen
-                              ? room
-                              : currentRoom?.id === room.id
-                                ? null
-                                : currentRoom,
-                          )
-                        }
-                      >
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            aria-label={`Actions for room ${room.roomNumber}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="absolute right-3 top-3 z-20 inline-flex size-9 items-center justify-center rounded-full border-t border-t-white border-b border-b-black/20 bg-white/95 text-ink shadow-[0_2px_0_rgba(0,0,0,0.16),0_4px_8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] hover:bg-white active:translate-y-0.5 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
-                          >
-                            <svg
-                              aria-hidden="true"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="size-5"
-                            >
-                              <circle cx="5" cy="12" r="1.8" />
-                              <circle cx="12" cy="12" r="1.8" />
-                              <circle cx="19" cy="12" r="1.8" />
-                            </svg>
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          aria-label={`Actions for room ${room.roomNumber}`}
-                        >
-                          <DropdownMenuItem onSelect={() => openEditForm(room)}>
-                            Edit Room
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onSelect={() => {
-                              setActionsMenu(null);
-                              setRoomToDelete(room);
-                            }}
-                          >
-                            Delete Room
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
 
                     <div className="p-5">
@@ -873,14 +565,6 @@ export default function Rooms() {
           )}
         </section>
       )}
-
-      <ConfirmDeleteModal
-        isOpen={roomToDelete !== null}
-        itemName={roomToDelete ? `Room ${roomToDelete.roomNumber}` : ""}
-        isDeleting={isDeleting}
-        onCancel={() => setRoomToDelete(null)}
-        onConfirm={() => void handleDeleteRoom()}
-      />
     </div>
   );
 }

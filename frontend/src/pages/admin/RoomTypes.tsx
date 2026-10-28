@@ -302,106 +302,152 @@ export default function RoomTypes() {
       </div>
 
       {isFormOpen && (
-        <div className="mt-8 rounded-2xl bg-white p-6">
-          {isCreating
-            ? editingRoomTypeId
-              ? "Saving..."
-              : "Creating..."
-            : editingRoomTypeId
-              ? "Save Changes"
-              : "Create Room Type"}
-
-          <form
-            onSubmit={
-              editingRoomTypeId ? handleUpdateRoomType : handleCreateRoomType
+        <div
+          className={
+            editingRoomTypeId
+              ? "fixed inset-0 z-50 flex cursor-pointer items-center justify-center overflow-y-auto bg-black/50 p-4"
+              : "mt-8 rounded-2xl bg-white p-6"
+          }
+          role={editingRoomTypeId ? "presentation" : undefined}
+          onMouseDown={(event) => {
+            if (
+              editingRoomTypeId &&
+              event.target === event.currentTarget &&
+              !isCreating
+            ) {
+              setIsFormOpen(false);
+              setEditingRoomTypeId(null);
+              setFormError("");
             }
-            className="mt-6 space-y-4"
+          }}
+        >
+          <section
+            role={editingRoomTypeId ? "dialog" : undefined}
+            aria-modal={editingRoomTypeId ? true : undefined}
+            aria-labelledby={editingRoomTypeId ? "room-type-form-title" : undefined}
+            className={
+              editingRoomTypeId
+                ? "my-auto max-h-[calc(100vh-2rem)] w-full max-w-xl cursor-default overflow-y-auto rounded-2xl border border-black/10 bg-white p-6 shadow-xl sm:p-8"
+                : ""
+            }
           >
-            <div>
-              <label className="text-sm font-medium">Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="e.g. Executive Suite"
-                required
-                className="mt-2 w-full rounded-xl border px-4 py-3"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Describe this room type"
-                required
-                rows={3}
-                className="mt-2 w-full rounded-xl border px-4 py-3"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Capacity (guests)</label>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={capacity}
-                onChange={(event) => setCapacity(Number(event.target.value))}
-                required
-                className="mt-2 w-full rounded-xl border px-4 py-3"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Price per Night (₱)</label>
-              <input
-                type="number"
-                min={0.01}
-                step="0.01"
-                value={pricePerNight}
-                onChange={(event) => setPricePerNight(event.target.value)}
-                placeholder="e.g. 5000"
-                required
-                className="mt-2 w-full rounded-xl border px-4 py-3"
-              />
-            </div>
-
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={isCreating}
-                className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
+            <div className="flex items-start justify-between gap-4">
+              <h2
+                id={editingRoomTypeId ? "room-type-form-title" : undefined}
+                className="font-display text-2xl"
               >
-                {isCreating
-                  ? editingRoomTypeId
-                    ? "Saving..."
-                    : "Creating..."
-                  : editingRoomTypeId
-                    ? "Save Changes"
-                    : "Create Room Type"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsFormOpen(false);
-                  setName("");
-                  setDescription("");
-                  setCapacity(2);
-                  setPricePerNight("");
-                  setFormError("");
-                  setEditingRoomTypeId(null);
-                }}
-                className={`rounded-full px-5 py-3 text-sm font-semibold ${adminRaisedLight}`}
-              >
-                Cancel
-              </button>
+                {editingRoomTypeId ? "Edit Room Type" : "Add Room Type"}
+              </h2>
+              {editingRoomTypeId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFormOpen(false);
+                    setEditingRoomTypeId(null);
+                    setFormError("");
+                  }}
+                  disabled={isCreating}
+                  aria-label="Close edit room type dialog"
+                  className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Close
+                </button>
+              )}
             </div>
-          </form>
+
+            <form
+              onSubmit={
+                editingRoomTypeId ? handleUpdateRoomType : handleCreateRoomType
+              }
+              className="mt-6 space-y-4"
+            >
+              <div>
+                <label className="text-sm font-medium">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="e.g. Executive Suite"
+                  required
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Describe this room type"
+                  required
+                  rows={3}
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Capacity (guests)</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={capacity}
+                  onChange={(event) => setCapacity(Number(event.target.value))}
+                  required
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Price per Night (₱)</label>
+                <input
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  value={pricePerNight}
+                  onChange={(event) => setPricePerNight(event.target.value)}
+                  placeholder="e.g. 5000"
+                  required
+                  className="mt-2 w-full rounded-xl border px-4 py-3"
+                />
+              </div>
+
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={isCreating}
+                  className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedDark}`}
+                >
+                  {isCreating
+                    ? editingRoomTypeId
+                      ? "Saving..."
+                      : "Creating..."
+                    : editingRoomTypeId
+                      ? "Save Changes"
+                      : "Create Room Type"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFormOpen(false);
+                    setName("");
+                    setDescription("");
+                    setCapacity(2);
+                    setPricePerNight("");
+                    setFormError("");
+                    setEditingRoomTypeId(null);
+                  }}
+                  disabled={isCreating}
+                  className={`rounded-full px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedLight}`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
 
