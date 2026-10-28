@@ -10,6 +10,15 @@ import ReservationStatus from "../../components/ui/ReservationStatus";
 import { formatCurrency } from "../../utils/format";
 import { getRoomTypeImage } from "../../utils/room-image";
 import axios from "axios";
+import { Button } from "../../components/ui/Button";
+import { updateGuestReservation } from "../../services/reservation.service";
+
+const getTodayDateInput = () => {
+  const today = new Date();
+  return new Date(today.getTime() - today.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
+};
 
 export default function ReservationDetails() {
   const { id } = useParams();
@@ -17,6 +26,13 @@ export default function ReservationDetails() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [checkInInput, setCheckInInput] = useState("");
+  const [checkOutInput, setCheckOutInput] = useState("");
+  const [guestsInput, setGuestsInput] = useState("1");
+  const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
   const [error, setError] = useState("");
   const [requestError, setRequestError] = useState("");
   const [failedImage, setFailedImage] = useState("");
@@ -74,6 +90,73 @@ export default function ReservationDetails() {
     }
   };
 
+  const startEditing = () => {
+    if (!reservation || reservation.status !== "PENDING") {
+      return;
+    }
+
+    setCheckInInput(reservation.checkIn.slice(0, 10));
+    setCheckOutInput(reservation.checkOut.slice(0, 10));
+    setGuestsInput(String(reservation.guests));
+    setEditError("");
+    setEditSuccess("");
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditError("");
+  };
+
+  const handleSaveChanges = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!id || !reservation || isSaving) {
+      return;
+    }
+
+    const guestCount = Number(guestsInput);
+    if (
+      checkInInput < getTodayDateInput() ||
+      !checkOutInput ||
+      checkOutInput <= checkInInput
+    ) {
+      setEditError("Choose valid check-in and check-out dates.");
+      return;
+    }
+    if (!Number.isInteger(guestCount) || guestCount < 1) {
+      setEditError("Enter a valid number of guests.");
+      return;
+    }
+    if (guestCount > reservation.room.roomType.capacity) {
+      setEditError(
+        `This room accommodates up to ${reservation.room.roomType.capacity} guests.`,
+      );
+      return;
+    }
+
+    setIsSaving(true);
+    setEditError("");
+    setEditSuccess("");
+    try {
+      const updatedReservation = await updateGuestReservation(id, {
+        roomId: reservation.room.id,
+        checkIn: checkInInput,
+        checkOut: checkOutInput,
+        guests: guestCount,
+      });
+      setReservation(updatedReservation);
+      setIsEditing(false);
+      setEditSuccess("Reservation updated successfully.");
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error)
+        ? (error.response?.data as { message?: string } | undefined)?.message
+        : undefined;
+      setEditError(message ?? "Unable to update this reservation.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return <div>Loading reservation...</div>;
   }
@@ -116,6 +199,7 @@ export default function ReservationDetails() {
 
   const canCancel =
     reservation.status === "PENDING" || reservation.status === "CONFIRMED";
+  const canEdit = reservation.status === "PENDING";
 
   return (
     <div>
@@ -184,27 +268,99 @@ export default function ReservationDetails() {
           </section>
 
           <section className="rounded-2xl bg-white p-6">
-            <h2 className="font-display text-2xl">Stay details</h2>
-            <dl className="mt-4 grid gap-5 sm:grid-cols-2">
-              <div>
-                <dt className="text-sm text-muted">Check-in</dt>
-                <dd className="mt-1 font-semibold">{checkIn}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted">Check-out</dt>
-                <dd className="mt-1 font-semibold">{checkOut}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted">Length of stay</dt>
-                <dd className="mt-1 font-semibold">
-                  {nights} {nights === 1 ? "night" : "nights"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted">Guests</dt>
-                <dd className="mt-1 font-semibold">{reservation.guests}</dd>
-              </div>
-            </dl>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-display text-2xl">Stay details</h2>
+              {canEdit && !isEditing && (
+                <Button type="button" variant="secondary" onClick={startEditing}>
+                  Edit reservation
+                </Button>
+              )}
+            </div>
+            {editSuccess && (
+              <p role="status" className="mt-4 text-sm font-medium text-sage">
+                {editSuccess}
+              </p>
+            )}
+            {isEditing ? (
+              <form onSubmit={handleSaveChanges} className="mt-4 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="text-sm font-medium">
+                    Check-in
+                    <input
+                      type="date"
+                      min={getTodayDateInput()}
+                      value={checkInInput}
+                      onChange={(event) => setCheckInInput(event.target.value)}
+                      required
+                      className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-ink"
+                    />
+                  </label>
+                  <label className="text-sm font-medium">
+                    Check-out
+                    <input
+                      type="date"
+                      min={checkInInput || getTodayDateInput()}
+                      value={checkOutInput}
+                      onChange={(event) => setCheckOutInput(event.target.value)}
+                      required
+                      className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-ink"
+                    />
+                  </label>
+                  <label className="text-sm font-medium sm:col-span-2">
+                    Guests
+                    <input
+                      type="number"
+                      min={1}
+                      max={reservation.room.roomType.capacity}
+                      step={1}
+                      value={guestsInput}
+                      onChange={(event) => setGuestsInput(event.target.value)}
+                      required
+                      className="mt-2 w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-ink"
+                    />
+                  </label>
+                </div>
+                {editError && (
+                  <p role="alert" className="text-sm text-red-600">
+                    {editError}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save changes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={cancelEditing}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <dl className="mt-4 grid gap-5 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm text-muted">Check-in</dt>
+                  <dd className="mt-1 font-semibold">{checkIn}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Check-out</dt>
+                  <dd className="mt-1 font-semibold">{checkOut}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Length of stay</dt>
+                  <dd className="mt-1 font-semibold">
+                    {nights} {nights === 1 ? "night" : "nights"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted">Guests</dt>
+                  <dd className="mt-1 font-semibold">{reservation.guests}</dd>
+                </div>
+              </dl>
+            )}
           </section>
         </div>
 

@@ -8,6 +8,7 @@ export type Reservation = {
   status: string;
   createdAt: string;
   room: {
+    id: string;
     roomNumber: string;
     roomType: {
       name: string;

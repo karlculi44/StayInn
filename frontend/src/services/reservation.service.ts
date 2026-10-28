@@ -27,6 +27,23 @@ export const cancelReservation = async (id: string) => {
   return response.data;
 };
 
+export const updateGuestReservation = async (
+  id: string,
+  reservation: {
+    roomId: string;
+    checkIn: string;
+    checkOut: string;
+    guests: number;
+  },
+): Promise<Reservation> => {
+  const response = await api.patch<Reservation>(
+    `/reservations/${id}`,
+    reservation,
+  );
+
+  return response.data;
+};
+
 export const createReservation = async (
   roomId: string,
   checkIn: string,

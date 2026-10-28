@@ -253,3 +253,71 @@ export const updateReservationForAdmin = async (
       },
     });
   });
+
+export const updateReservationForGuest = async (
+  id: string,
+  userId: string,
+  { roomId, checkIn, checkOut, guests }: Omit<CreateReservationInput, "userId">,
+) =>
+  prisma.$transaction(async (tx) => {
+    const lockedReservations = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id"
+      FROM "Reservation"
+      WHERE "id" = ${id}
+      FOR UPDATE
+    `;
+
+    if (lockedReservations.length === 0) {
+      throw new AppError("Reservation not found", 404);
+    }
+
+    const reservation = await tx.reservation.findUnique({
+      where: { id },
+    });
+
+    if (!reservation || reservation.userId !== userId) {
+      throw new AppError("Reservation not found", 404);
+    }
+
+    if (reservation.status !== "PENDING") {
+      throw new AppError("Only pending reservations can be edited", 400);
+    }
+
+    const lockedRooms = await lockRoomsInOrder(tx, [reservation.roomId, roomId]);
+
+    if (!lockedRooms.some((room) => room.id === roomId)) {
+      throw new AppError("Room not found", 404);
+    }
+
+    const room = await getRoomForBooking(
+      tx,
+      roomId,
+      checkIn,
+      checkOut,
+      guests,
+      reservation.id,
+    );
+    const totalAmount = calculateTotalAmount(
+      room.roomType.pricePerNight,
+      checkIn,
+      checkOut,
+    );
+
+    return tx.reservation.update({
+      where: { id },
+      data: {
+        roomId,
+        checkIn,
+        checkOut,
+        guests,
+        totalAmount,
+      },
+      include: {
+        room: {
+          include: {
+            roomType: true,
+          },
+        },
+      },
+    });
+  });

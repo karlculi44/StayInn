@@ -8,6 +8,7 @@ import type { AdminReservationQuery } from "../schemas/reservation.schema.js";
 import {
   createReservationForUser,
   updateReservationForAdmin,
+  updateReservationForGuest,
 } from "../services/reservationCreation.js";
 
 const validTransitions: Record<ReservationStatus, ReservationStatus[]> = {
@@ -127,6 +128,25 @@ export const getReservationById = asyncHandler(
     if (reservation.userId !== req.user.userId) {
       throw new AppError("Access denied", 403);
     }
+
+    res.json(reservation);
+  },
+);
+
+export const updateGuestReservation = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError("Authentication required", 401);
+    }
+
+    const id = getStringParam(req.params.id, "reservation ID");
+    const { roomId, checkIn, checkOut, guests } = req.body;
+
+    const reservation = await updateReservationForGuest(
+      id,
+      req.user.userId,
+      { roomId, checkIn, checkOut, guests },
+    );
 
     res.json(reservation);
   },

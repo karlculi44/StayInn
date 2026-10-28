@@ -119,6 +119,31 @@ const editAdminReservation = async (
       guests,
     });
 
+const editGuestReservation = async (
+  reservationId: string,
+  userId: string,
+  checkIn: Date,
+  checkOut: Date,
+  guests = 2,
+  roomId = testRoomId,
+) => {
+  const token = jwt.sign(
+    { userId, role: "GUEST" },
+    process.env.JWT_ACCESS_TOKEN_SECRET as string,
+    { expiresIn: "5m" },
+  );
+
+  return request(app)
+    .patch(`/api/reservations/${reservationId}`)
+    .set("Cookie", `accessToken=${token}`)
+    .send({
+      roomId,
+      checkIn: checkIn.toISOString(),
+      checkOut: checkOut.toISOString(),
+      guests,
+    });
+};
+
 describe("Reservation booking integration tests", () => {
   beforeAll(async () => {
     const secret = process.env.JWT_ACCESS_TOKEN_SECRET;
@@ -463,6 +488,74 @@ describe("Reservation booking integration tests", () => {
     expect(Number(response.body.totalAmount)).toBe(300);
     expect(response.body.user.id).toBe(user.id);
     expect(response.body.room.id).toBe(testRoomId);
+  });
+
+  it("allows a guest to edit their own pending reservation", async () => {
+    const user = await createTestUser();
+    const original = await createExistingReservation(
+      user.id,
+      futureDate(51),
+      futureDate(52),
+      "PENDING",
+    );
+    const checkIn = futureDate(54);
+    const checkOut = futureDate(57);
+
+    const response = await editGuestReservation(
+      original.id,
+      user.id,
+      checkIn,
+      checkOut,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(original.id);
+    expect(response.body.status).toBe("PENDING");
+    expect(Number(response.body.totalAmount)).toBe(300);
+    expect(response.body.room.id).toBe(testRoomId);
+  });
+
+  it("does not allow a guest to edit another guest's reservation", async () => {
+    const owner = await createTestUser();
+    const otherGuest = await createTestUser();
+    const reservation = await createExistingReservation(
+      owner.id,
+      futureDate(58),
+      futureDate(60),
+      "PENDING",
+    );
+
+    const response = await editGuestReservation(
+      reservation.id,
+      otherGuest.id,
+      futureDate(61),
+      futureDate(63),
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.body.message).toBe("Reservation not found");
+  });
+
+  it("does not allow a guest to edit a confirmed reservation", async () => {
+    const user = await createTestUser();
+    const reservation = await createExistingReservation(
+      user.id,
+      futureDate(64),
+      futureDate(66),
+      "CONFIRMED",
+    );
+
+    const response = await editGuestReservation(
+      reservation.id,
+      user.id,
+      futureDate(67),
+      futureDate(69),
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe(
+      "Only pending reservations can be edited",
+    );
   });
 
   it("rejects edits that overlap another active reservation", async () => {

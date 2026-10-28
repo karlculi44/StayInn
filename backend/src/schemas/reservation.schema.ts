@@ -28,6 +28,8 @@ const reservationWithValidDatesSchema = reservationDetailsSchema
 
 export const createReservationSchema = reservationWithValidDatesSchema;
 
+export const updateGuestReservationSchema = reservationWithValidDatesSchema;
+
 export const createAdminReservationSchema =
   reservationWithValidDatesSchema.safeExtend({
     userId: z.uuid("Invalid user ID"),
