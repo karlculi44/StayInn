@@ -21,7 +21,8 @@ export default function ProfileDropdown() {
     return null;
   }
 
-  const profilePath = user.role === "ADMIN" ? "/admin/profile" : "/profile";
+  const profilePath =
+    user.role === "ADMIN" ? "/admin/profile" : "/dashboard/profile";
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -78,26 +79,6 @@ export default function ProfileDropdown() {
             <span>My Profile</span>
           </Link>
         </DropdownMenuItem>
-        {user.role === "GUEST" && (
-          <DropdownMenuItem asChild>
-            <Link to="/notifications" className="md:hidden">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-4 shrink-0"
-              >
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-                <path d="M10 21h4" />
-              </svg>
-              <span>Notifications</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={isLoggingOut}
