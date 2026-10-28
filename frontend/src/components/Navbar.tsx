@@ -68,7 +68,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-black/5 bg-cream/95">
-      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto] items-center px-5 py-5 md:grid-cols-[1fr_auto_1fr] lg:px-8">
+      <div className="grid w-full grid-cols-[1fr_auto] items-center px-4 py-5 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8">
         <Link
           to="/"
           className="font-display text-2xl font-bold tracking-tight text-sage"
