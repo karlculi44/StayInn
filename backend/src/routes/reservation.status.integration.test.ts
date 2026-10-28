@@ -115,6 +115,12 @@ describe("Reservation cancellation and status transitions", () => {
 
   afterEach(async () => {
     if (createdReservationIds.length > 0) {
+      await prisma.notification.deleteMany({
+        where: {
+          reservationId: { in: [...createdReservationIds] },
+        },
+      });
+
       await prisma.reservation.deleteMany({
         where: {
           id: { in: [...createdReservationIds] },
@@ -208,6 +214,46 @@ describe("Reservation cancellation and status transitions", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("CONFIRMED");
+
+    const notifications = await prisma.notification.findMany({
+      where: { userId: guestId, reservationId: reservation.id },
+    });
+
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({
+      type: "RESERVATION_STATUS_UPDATED",
+      title: "Reservation status updated",
+      message: `Your reservation ${reservation.referenceId} is now confirmed.`,
+    });
+
+    const listResponse = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body).toHaveLength(1);
+    expect(listResponse.body[0].id).toBe(notifications[0].id);
+
+    const otherGuestListResponse = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", authCookie(otherGuestId, "GUEST"));
+
+    expect(otherGuestListResponse.status).toBe(200);
+    expect(otherGuestListResponse.body).toHaveLength(0);
+
+    const markReadResponse = await request(app)
+      .patch(`/api/notifications/${notifications[0].id}/read`)
+      .set("Cookie", authCookie(guestId, "GUEST"));
+
+    expect(markReadResponse.status).toBe(200);
+    expect(markReadResponse.body.readAt).toBeTruthy();
+
+    const otherGuestResponse = await request(app)
+      .patch(`/api/notifications/${notifications[0].id}/read`)
+      .set("Cookie", authCookie(otherGuestId, "GUEST"));
+
+    expect(otherGuestResponse.status).toBe(404);
+    expect(otherGuestResponse.body.message).toBe("Notification not found");
   });
 
   it("rejects an invalid status transition", async () => {

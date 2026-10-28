@@ -23,7 +23,12 @@ export default function Navbar() {
           stay<span className="text-gold">inn</span>
         </Link>
         <nav className="hidden items-center justify-self-center gap-8 md:flex">
-          {links.map((link) => (
+          {[
+            ...links,
+            ...(user?.role === "GUEST"
+              ? [{ label: "Notifications", to: "/notifications" }]
+              : []),
+          ].map((link) => (
             <NavLink
               key={link.label}
               to={link.label === "Dashboard" ? dashboardPath : link.to}

@@ -20,6 +20,7 @@ model User {
   reservations      Reservation[]
   refreshTokens     RefreshToken[]
   roomStatusChanges RoomStatusHistory[] @relation("RoomStatusChangedBy")
+  notifications     Notification[]
 }
 
 enum Role {
@@ -95,6 +96,8 @@ model Reservation {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  notifications Notification[]
 }
 
 enum ReservationStatus {
@@ -102,6 +105,26 @@ enum ReservationStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  type          NotificationType
+  title         String
+  message       String
+  readAt        DateTime?
+  createdAt     DateTime         @default(now())
+
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservationId String?
+  reservation   Reservation?     @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+enum NotificationType {
+  RESERVATION_STATUS_UPDATED
 }
 
 model RefreshToken {

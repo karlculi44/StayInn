@@ -14,6 +14,7 @@ import GuestDashboard from "../pages/guest/Dashboard";
 import GuestReservations from "../pages/guest/Reservations";
 import ReservationDetails from "../pages/guest/ReservationDetails";
 import Profile from "../pages/guest/Profile";
+import Notifications from "../pages/guest/Notifications";
 import AdminPage from "../pages/admin/Dashboard";
 import AdminRooms from "../pages/admin/Rooms";
 import AdminRoomDetails from "../pages/admin/RoomDetails";
@@ -42,6 +43,7 @@ export default function AppRoutes() {
           <Route path="/reservations" element={<GuestReservations />} />
           <Route path="/reservations/:id" element={<ReservationDetails />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/notifications" element={<Notifications />} />
         </Route>
       </Route>
       <Route element={<AdminGuard />}>

@@ -8,6 +8,7 @@ import reservationRoutes from "./routes/reservation.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 import helmet from "helmet";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { verifyRequestOrigin } from "./middleware/origin.middleware.js";
@@ -57,6 +58,7 @@ app.use("/api/reservations", reservationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(errorMiddleware);
 

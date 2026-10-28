@@ -294,13 +294,25 @@ export const updateReservationStatus = asyncHandler(
       );
     }
 
-    const updatedReservation = await prisma.reservation.update({
-      where: {
-        id,
-      },
-      data: {
-        status,
-      },
+    const updatedReservation = await prisma.$transaction(async (transaction) => {
+      const updated = await transaction.reservation.update({
+        where: { id },
+        data: { status },
+      });
+
+      if (reservation.userId) {
+        await transaction.notification.create({
+          data: {
+            type: "RESERVATION_STATUS_UPDATED",
+            title: "Reservation status updated",
+            message: `Your reservation ${reservation.referenceId} is now ${status.toLowerCase()}.`,
+            userId: reservation.userId,
+            reservationId: reservation.id,
+          },
+        });
+      }
+
+      return updated;
     });
 
     res.json(updatedReservation);
