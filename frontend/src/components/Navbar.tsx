@@ -6,6 +6,7 @@ import ThemeToggle from "./ui/ThemeToggle";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
+  { label: "About", to: "/about" },
   { label: "Dashboard", to: "/dashboard" },
 ];
 export default function Navbar() {
@@ -13,15 +14,15 @@ export default function Navbar() {
   const dashboardPath = user?.role === "ADMIN" ? "/admin" : "/dashboard";
 
   return (
-    <header className="border-b border-black/5 bg-cream/95">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-black/5 bg-cream/95">
+      <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto] items-center px-5 py-5 md:grid-cols-[1fr_auto_1fr] lg:px-8">
         <Link
           to="/"
           className="font-display text-2xl font-bold tracking-tight text-sage"
         >
           stay<span className="text-gold">inn</span>
         </Link>
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center justify-self-center gap-8 md:flex">
           {links.map((link) => (
             <NavLink
               key={link.label}
@@ -34,7 +35,7 @@ export default function Navbar() {
             </NavLink>
           ))}
         </nav>
-        <div className="flex min-h-9 items-center justify-end gap-3 sm:min-w-52">
+        <div className="flex min-h-9 items-center justify-self-end gap-3 sm:min-w-52">
           <ThemeToggle />
           {!isLoading &&
             (user ? (

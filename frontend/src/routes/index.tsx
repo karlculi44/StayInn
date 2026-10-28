@@ -5,6 +5,7 @@ import PublicLayout from "../layouts/PublicLayout";
 import GuestLayout from "../layouts/GuestLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import Home from "../pages/public/Home";
+import About from "../pages/public/About";
 import Rooms from "../pages/public/Rooms";
 import RoomDetails from "../pages/public/RoomDetails";
 import Login from "../pages/public/Login";
@@ -31,6 +32,7 @@ export default function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/rooms" element={<Rooms />} />
         <Route path="/rooms/:id" element={<RoomDetails />} />
+        <Route path="/about" element={<About />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Route>

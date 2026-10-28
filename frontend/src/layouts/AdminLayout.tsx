@@ -7,6 +7,7 @@ import PageTransition from "../components/ui/PageTransition";
 const links = [
   { label: "Home", to: "/" },
   { label: "Rooms", to: "/rooms" },
+  { label: "About", to: "/about" },
   { label: "Dashboard", to: "/admin" },
 ];
 
