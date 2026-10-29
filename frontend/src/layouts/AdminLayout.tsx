@@ -5,11 +5,12 @@ import MobileNavMenu from "../components/ui/MobileNavMenu";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import PageTransition from "../components/ui/PageTransition";
 import { primaryNavigationItems } from "../components/primaryNavigation";
+import PrimaryNavIcon from "../components/PrimaryNavIcon";
 
 const links = [
   ...primaryNavigationItems,
-  { label: "Dashboard", to: "/admin" },
-];
+  { label: "Dashboard", to: "/admin", icon: "dashboard" },
+] as const;
 export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-cream">
@@ -27,9 +28,10 @@ export default function AdminLayout() {
               end
               to={link.to}
               className={({ isActive }) =>
-                `text-sm font-medium ${isActive ? "text-sage" : "text-muted hover:text-sage"}`
+                `flex items-center text-sm font-medium ${isActive ? "text-sage" : "text-muted hover:text-sage"}`
               }
             >
+              <PrimaryNavIcon name={link.icon} />
               {link.label}
             </NavLink>
           ))}

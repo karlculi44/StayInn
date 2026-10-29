@@ -5,6 +5,7 @@ import { useAuth } from "../../context/useAuth";
 import { adminNavigationItems } from "../adminNavigation";
 import { guestNavigationItems } from "../guestNavigation";
 import { primaryNavigationItems } from "../primaryNavigation";
+import PrimaryNavIcon from "../PrimaryNavIcon";
 import { AdminNavIcon } from "../AdminSidebar";
 import { GuestNavIcon } from "../GuestDashboardSidebar";
 import NotificationLink from "./NotificationLink";
@@ -28,7 +29,10 @@ function isItemActive(item: NavItem, pathname: string) {
 }
 
 function getGroups(role?: string): NavGroup[] {
-  const main: NavItem[] = [...primaryNavigationItems];
+  const main: NavItem[] = primaryNavigationItems.map((item) => ({
+    ...item,
+    icon: <PrimaryNavIcon name={item.icon} />,
+  }));
   if (role === "ADMIN") {
     const publicLinks = main.map((item) =>
       item.to === "/rooms" ? { ...item, label: "Browse rooms" } : item,
@@ -60,7 +64,13 @@ function getGroups(role?: string): NavGroup[] {
     ];
   }
   return [
-    { label: "Main", items: [...main, { label: "Dashboard", to: "/dashboard", end: true }] },
+    {
+      label: "Main",
+      items: [
+        ...main,
+        { label: "Dashboard", to: "/dashboard", end: true, icon: <PrimaryNavIcon name="dashboard" /> },
+      ],
+    },
     { label: "Account", items: [{ label: "Sign in", to: "/login" }, { label: "Get started", to: "/register" }] },
   ];
 }

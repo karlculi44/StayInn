@@ -7,14 +7,15 @@ import ProfileDropdown from "./ui/ProfileDropdown";
 import ThemeToggle from "./ui/ThemeToggle";
 import NotificationLink from "./ui/NotificationLink";
 import { primaryNavigationItems } from "./primaryNavigation";
+import PrimaryNavIcon from "./PrimaryNavIcon";
 import {
   getUnreadNotificationCount,
   NOTIFICATIONS_UPDATED_EVENT,
 } from "../services/notification.service";
 const links = [
   ...primaryNavigationItems,
-  { label: "Dashboard", to: "/dashboard" },
-];
+  { label: "Dashboard", to: "/dashboard", icon: "dashboard" },
+] as const;
 export default function Navbar() {
   const { user, isLoading } = useAuth();
   const dashboardPath = user?.role === "ADMIN" ? "/admin" : "/dashboard";
@@ -81,9 +82,10 @@ export default function Navbar() {
               key={link.label}
               to={link.label === "Dashboard" ? dashboardPath : link.to}
               className={({ isActive }) =>
-                `text-sm font-medium ${isActive ? "text-sage" : "text-muted hover:text-sage"}`
+                `flex items-center text-sm font-medium ${isActive ? "text-sage" : "text-muted hover:text-sage"}`
               }
             >
+              <PrimaryNavIcon name={link.icon} />
               {link.label}
             </NavLink>
           ))}
