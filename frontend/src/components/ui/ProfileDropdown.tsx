@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import ProfileAvatar from "./ProfileAvatar";
+import { useLogout } from "./useLogout";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +12,9 @@ import {
 } from "./dropdown-menu";
 
 export default function ProfileDropdown() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState("");
+  const { handleLogout, isLoggingOut, logoutError, setLogoutError } = useLogout();
 
   if (!user) {
     return null;
@@ -23,22 +22,6 @@ export default function ProfileDropdown() {
 
   const profilePath =
     user.role === "ADMIN" ? "/admin/profile" : "/dashboard/profile";
-
-  async function handleLogout() {
-    setIsLoggingOut(true);
-    setLogoutError("");
-
-    try {
-      await logout();
-      setIsOpen(false);
-      navigate("/");
-    } catch {
-      setIsOpen(true);
-      setLogoutError("Unable to log out. Please try again.");
-    } finally {
-      setIsLoggingOut(false);
-    }
-  }
 
   return (
     <DropdownMenu
@@ -84,7 +67,7 @@ export default function ProfileDropdown() {
           disabled={isLoggingOut}
           onSelect={(event) => {
             event.preventDefault();
-            void handleLogout();
+            void handleLogout().then((success) => setIsOpen(!success));
           }}
         >
           <svg

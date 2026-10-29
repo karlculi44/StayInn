@@ -1,22 +1,7 @@
 import { NavLink } from "react-router-dom";
+import { guestNavigationItems } from "./guestNavigation";
 
-const items = [
-  { label: "Overview", to: "/dashboard", icon: "overview", end: true },
-  {
-    label: "My Reservations",
-    to: "/dashboard/reservations",
-    icon: "reservations",
-    end: false,
-  },
-  {
-    label: "My Profile",
-    to: "/dashboard/profile",
-    icon: "profile",
-    end: false,
-  },
-] as const;
-
-function GuestNavIcon({ name }: { name: (typeof items)[number]["icon"] }) {
+export function GuestNavIcon({ name }: { name: (typeof guestNavigationItems)[number]["icon"] }) {
   return (
     <svg
       aria-hidden="true"
@@ -54,9 +39,9 @@ function GuestNavIcon({ name }: { name: (typeof items)[number]["icon"] }) {
 
 export default function GuestDashboardSidebar() {
   return (
-    <aside className="w-full shrink-0 border-b border-black/10 pb-5 md:border-b-0 md:border-r md:pb-0 md:pr-5">
+    <aside className="hidden w-full shrink-0 border-b border-black/10 pb-5 md:block md:border-b-0 md:border-r md:pb-0 md:pr-5">
       <nav aria-label="Guest dashboard" className="grid gap-1">
-        {items.map((item) => (
+        {guestNavigationItems.map((item) => (
           <NavLink
             end={item.end}
             key={item.to}

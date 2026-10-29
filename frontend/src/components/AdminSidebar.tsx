@@ -3,7 +3,7 @@ import { adminNavigationItems } from "./adminNavigation";
 
 type AdminNavIconName = (typeof adminNavigationItems)[number]["icon"];
 
-function AdminNavIcon({ name }: { name: AdminNavIconName }) {
+export function AdminNavIcon({ name }: { name: AdminNavIconName }) {
   return (
     <svg
       aria-hidden="true"

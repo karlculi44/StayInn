@@ -37,6 +37,10 @@ Start the development server:
 npm run dev
 ```
 
+The development command generates the Prisma client before starting. After
+changing the Prisma schema while the server is running, apply the appropriate
+migrations and restart the server so it loads the regenerated client.
+
 The backend reads `backend\.env`. `HOST` defaults to `127.0.0.1` in development and `0.0.0.0` in production. `PORT` defaults to `5000`. PostgreSQL remains configured by `DATABASE_URL` and is accessed only by the backend.
 
 The seed file is `prisma/seed.ts`; it is not configured as an npm or Prisma seed command. If sample data is needed, run it explicitly from `backend` with `NODE_ENV=development` and `DATABASE_URL` pointing only to the local development database:

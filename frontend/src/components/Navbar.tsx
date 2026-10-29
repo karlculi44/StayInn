@@ -5,14 +5,14 @@ import { useAuth } from "../context/useAuth";
 import MobileNavMenu from "./ui/MobileNavMenu";
 import ProfileDropdown from "./ui/ProfileDropdown";
 import ThemeToggle from "./ui/ThemeToggle";
+import NotificationLink from "./ui/NotificationLink";
+import { primaryNavigationItems } from "./primaryNavigation";
 import {
   getUnreadNotificationCount,
   NOTIFICATIONS_UPDATED_EVENT,
 } from "../services/notification.service";
 const links = [
-  { label: "Home", to: "/" },
-  { label: "Rooms", to: "/rooms" },
-  { label: "About", to: "/about" },
+  ...primaryNavigationItems,
   { label: "Dashboard", to: "/dashboard" },
 ];
 export default function Navbar() {
@@ -89,68 +89,25 @@ export default function Navbar() {
           ))}
         </nav>
         <div className="flex min-h-9 items-center justify-self-end gap-3 sm:min-w-52">
-          <ThemeToggle />
+          <div className="hidden md:block"><ThemeToggle /></div>
           {!isLoading &&
             (user ? (
               <>
-                {user.role === "GUEST" && (
-                  <Link
-                    to="/notifications"
-                    aria-label={
-                      visibleUnreadCount > 0
-                        ? `Notifications, ${visibleUnreadCount} unread`
-                        : "Notifications"
-                    }
-                    title="Notifications"
-                    className="relative inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-sage/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="size-5"
-                    >
-                      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-                      <path d="M10 21h4" />
-                    </svg>
-                    {visibleUnreadCount > 0 && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
-                      >
-                        {visibleUnreadCount > 99
-                          ? "99+"
-                          : visibleUnreadCount}
-                      </span>
-                    )}
-                  </Link>
-                )}
-                <ProfileDropdown />
+                {user.role === "GUEST" && <div className="hidden md:block"><NotificationLink unreadCount={visibleUnreadCount} /></div>}
+                <div className="hidden md:block"><ProfileDropdown /></div>
               </>
             ) : (
               <>
                 <NavLink
                   to="/login"
-                  className="hidden text-sm font-semibold text-ink hover:text-sage sm:block"
+                  className="hidden text-sm font-semibold text-ink hover:text-sage md:block"
                 >
                   Sign in
                 </NavLink>
-                <ButtonLink to="/register" className="px-4 py-2">
-                  Get started
-                </ButtonLink>
+                <div className="hidden md:block"><ButtonLink to="/register" className="px-4 py-2">Get started</ButtonLink></div>
               </>
             ))}
-          <MobileNavMenu
-            items={links.map((link) => ({
-              ...link,
-              to: link.label === "Dashboard" ? dashboardPath : link.to,
-            }))}
-            ariaLabel="Primary navigation"
-          />
+          <MobileNavMenu unreadCount={visibleUnreadCount} />
         </div>
       </div>
     </header>

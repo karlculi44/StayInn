@@ -4,23 +4,12 @@ import ProfileDropdown from "../components/ui/ProfileDropdown";
 import MobileNavMenu from "../components/ui/MobileNavMenu";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import PageTransition from "../components/ui/PageTransition";
-import { adminNavigationItems } from "../components/adminNavigation";
+import { primaryNavigationItems } from "../components/primaryNavigation";
 
 const links = [
-  { label: "Home", to: "/" },
-  { label: "Rooms", to: "/rooms" },
-  { label: "About", to: "/about" },
+  ...primaryNavigationItems,
   { label: "Dashboard", to: "/admin" },
 ];
-const mobileLinks = [
-  ...links.filter((link) => link.to !== "/admin"),
-  ...adminNavigationItems.map(({ label, to }) => ({
-    label,
-    to,
-    end: to === "/admin",
-  })),
-];
-
 export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-cream">
@@ -46,9 +35,9 @@ export default function AdminLayout() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <ProfileDropdown />
-          <MobileNavMenu items={mobileLinks} ariaLabel="Admin navigation" />
+          <div className="hidden md:block"><ThemeToggle /></div>
+          <div className="hidden md:block"><ProfileDropdown /></div>
+          <MobileNavMenu />
         </div>
       </header>
       <div className="pt-20 lg:flex">

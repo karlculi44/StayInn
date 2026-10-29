@@ -113,6 +113,30 @@
   animation: ui-exit 110ms ease-in both;
 }
 
+@keyframes mobile-drawer-enter {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.mobile-drawer {
+  animation: mobile-drawer-enter 180ms ease-out;
+}
+
+.mobile-nav-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 160ms ease-out;
+}
+
+.mobile-nav-collapse.is-open {
+  grid-template-rows: 1fr;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer { animation: none; }
+  .mobile-nav-collapse { transition: none; }
+}
+
 @layer base {
   body {
     background-color: var(--app-page);
