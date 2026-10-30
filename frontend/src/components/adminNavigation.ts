@@ -1,5 +1,6 @@
 export const adminNavigationItems = [
   { label: "Overview", to: "/admin", icon: "overview", category: "Main" },
+  { label: "Notifications", to: "/admin/notifications", icon: "notifications", category: "Workspace" },
   { label: "Rooms", to: "/admin/rooms", icon: "rooms", category: "Room Management" },
   {
     label: "Room status history",

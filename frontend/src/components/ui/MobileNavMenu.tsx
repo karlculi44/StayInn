@@ -8,7 +8,6 @@ import { primaryNavigationItems } from "../primaryNavigation";
 import PrimaryNavIcon from "../PrimaryNavIcon";
 import { AdminNavIcon } from "../AdminSidebar";
 import { GuestNavIcon } from "../GuestDashboardSidebar";
-import NotificationLink from "./NotificationLink";
 import ThemeToggle from "./ThemeToggle";
 import { useLogout } from "./useLogout";
 
@@ -44,6 +43,7 @@ function getGroups(role?: string): NavGroup[] {
     }));
     return [
       { label: "Main", items: [...publicLinks, ...adminItems.filter((item) => item.category === "Main")] },
+      { label: "Workspace", items: adminItems.filter((item) => item.category === "Workspace") },
       ...(["Room Management", "Reservations", "User Management"] as const).map((label) => ({
         label,
         items: adminItems.filter((item) => item.category === label),
@@ -75,7 +75,7 @@ function getGroups(role?: string): NavGroup[] {
   ];
 }
 
-export default function MobileNavMenu({ unreadCount = 0 }: { unreadCount?: number }) {
+export default function MobileNavMenu() {
   const { user, isLoading } = useAuth();
   const { pathname } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -173,7 +173,6 @@ export default function MobileNavMenu({ unreadCount = 0 }: { unreadCount?: numbe
               <div className="mt-4 flex items-center gap-3 border-t border-black/10 pt-4">
                 <ThemeToggle />
                 <span className="text-sm text-muted">Appearance</span>
-                {user?.role === "GUEST" && <div className="ml-auto"><NotificationLink unreadCount={unreadCount} highlightActive onClick={() => setIsOpen(false)} /></div>}
               </div>
               {!isLoading && user && (
                 <div className="mt-4 border-t border-black/10 pt-4">

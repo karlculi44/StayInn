@@ -58,6 +58,25 @@ describe("Reservation cancellation and status transitions", () => {
     return reservation;
   }
 
+  async function createTestNotification(
+    userId: string,
+    reservationId: string,
+    createdAt: Date,
+    readAt: Date | null = null,
+  ) {
+    return prisma.notification.create({
+      data: {
+        type: "RESERVATION_STATUS_UPDATED",
+        title: "Reservation status updated",
+        message: "Your reservation status changed.",
+        userId,
+        reservationId,
+        createdAt,
+        readAt,
+      },
+    });
+  }
+
   beforeAll(async () => {
     const roomType = await prisma.roomType.create({
       data: {
@@ -227,6 +246,17 @@ describe("Reservation cancellation and status transitions", () => {
       message: `Your reservation ${reservation.referenceId} is now confirmed.`,
     });
 
+    const adminNotification = await createTestNotification(
+      adminId,
+      reservation.id,
+      new Date(Date.now() + 1_000),
+    );
+    const otherGuestNotification = await createTestNotification(
+      otherGuestId,
+      reservation.id,
+      new Date(Date.now() + 2_000),
+    );
+
     const listResponse = await request(app)
       .get("/api/notifications")
       .set("Cookie", authCookie(guestId, "GUEST"));
@@ -234,6 +264,30 @@ describe("Reservation cancellation and status transitions", () => {
     expect(listResponse.status).toBe(200);
     expect(listResponse.body).toHaveLength(1);
     expect(listResponse.body[0].id).toBe(notifications[0].id);
+
+    const paginatedResponse = await request(app)
+      .get("/api/notifications?limit=1&offset=0")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+    expect(paginatedResponse.status).toBe(200);
+    expect(paginatedResponse.body.map((item: { id: string }) => item.id)).toEqual([
+      notifications[0].id,
+    ]);
+
+    const unreadResponse = await request(app)
+      .get("/api/notifications?unreadOnly=true")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+    expect(unreadResponse.status).toBe(200);
+    expect(unreadResponse.body.map((item: { id: string }) => item.id)).toEqual([
+      notifications[0].id,
+    ]);
+
+    const adminListResponse = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", authCookie(adminId, "ADMIN"));
+    expect(adminListResponse.status).toBe(200);
+    expect(adminListResponse.body.map((item: { id: string }) => item.id)).toEqual([
+      adminNotification.id,
+    ]);
 
     const unreadCountResponse = await request(app)
       .get("/api/notifications/unread-count")
@@ -247,7 +301,9 @@ describe("Reservation cancellation and status transitions", () => {
       .set("Cookie", authCookie(otherGuestId, "GUEST"));
 
     expect(otherGuestListResponse.status).toBe(200);
-    expect(otherGuestListResponse.body).toHaveLength(0);
+    expect(otherGuestListResponse.body.map((item: { id: string }) => item.id)).toEqual([
+      otherGuestNotification.id,
+    ]);
 
     const markReadResponse = await request(app)
       .patch(`/api/notifications/${notifications[0].id}/read`)
@@ -269,6 +325,30 @@ describe("Reservation cancellation and status transitions", () => {
 
     expect(otherGuestResponse.status).toBe(404);
     expect(otherGuestResponse.body.message).toBe("Notification not found");
+    const guestCannotReadAdminsNotification = await request(app)
+      .patch(`/api/notifications/${adminNotification.id}/read`)
+      .set("Cookie", authCookie(guestId, "GUEST"));
+    expect(guestCannotReadAdminsNotification.status).toBe(404);
+
+    const adminCannotReadGuestsNotification = await request(app)
+      .patch(`/api/notifications/${notifications[0].id}/read`)
+      .set("Cookie", authCookie(adminId, "ADMIN"));
+    expect(adminCannotReadGuestsNotification.status).toBe(404);
+
+    const invalidLimitResponse = await request(app)
+      .get("/api/notifications?limit=0")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+    expect(invalidLimitResponse.status).toBe(400);
+
+    const invalidFilterResponse = await request(app)
+      .get("/api/notifications?unreadOnly=maybe")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+    expect(invalidFilterResponse.status).toBe(400);
+
+    const invalidIdResponse = await request(app)
+      .patch("/api/notifications/not-a-uuid/read")
+      .set("Cookie", authCookie(guestId, "GUEST"));
+    expect(invalidIdResponse.status).toBe(400);
   });
 
   it("allows a guest to mark all their notifications as read", async () => {

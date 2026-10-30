@@ -27,6 +27,12 @@ export function GuestNavIcon({ name }: { name: (typeof guestNavigationItems)[num
           <path d="M9 4V3h6v1m-7 6h8m-8 4h8m-8 4h5" />
         </>
       )}
+      {name === "notifications" && (
+        <>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M10 21h4" />
+        </>
+      )}
       {name === "profile" && (
         <>
           <circle cx="12" cy="8" r="4" />

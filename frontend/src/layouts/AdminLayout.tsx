@@ -3,15 +3,19 @@ import AdminSidebar from "../components/AdminSidebar";
 import ProfileDropdown from "../components/ui/ProfileDropdown";
 import MobileNavMenu from "../components/ui/MobileNavMenu";
 import ThemeToggle from "../components/ui/ThemeToggle";
+import NotificationLink from "../components/ui/NotificationLink";
 import PageTransition from "../components/ui/PageTransition";
 import { primaryNavigationItems } from "../components/primaryNavigation";
 import PrimaryNavIcon from "../components/PrimaryNavIcon";
+import { useUnreadNotificationCount } from "../hooks/useUnreadNotificationCount";
 
 const links = [
   ...primaryNavigationItems,
   { label: "Dashboard", to: "/admin", icon: "dashboard" },
 ] as const;
 export default function AdminLayout() {
+  const { unreadCount, refreshUnreadCount } = useUnreadNotificationCount();
+
   return (
     <div className="min-h-screen bg-cream">
       <header className="fixed inset-x-0 top-0 z-30 flex h-20 items-center justify-between border-b border-black/5 bg-white px-5 lg:px-8">
@@ -38,6 +42,12 @@ export default function AdminLayout() {
         </nav>
         <div className="flex items-center gap-3">
           <div className="hidden md:block"><ThemeToggle /></div>
+          <div className="hidden md:block">
+            <NotificationLink
+              unreadCount={unreadCount}
+              onOpen={refreshUnreadCount}
+            />
+          </div>
           <div className="hidden md:block"><ProfileDropdown /></div>
           <MobileNavMenu />
         </div>

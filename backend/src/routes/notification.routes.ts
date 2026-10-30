@@ -9,23 +9,23 @@ import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.get("/", verifyToken, authorize("GUEST"), getNotifications);
+router.get("/", verifyToken, authorize("GUEST", "ADMIN"), getNotifications);
 router.get(
   "/unread-count",
   verifyToken,
-  authorize("GUEST"),
+  authorize("GUEST", "ADMIN"),
   getUnreadNotificationCount,
 );
 router.patch(
   "/read-all",
   verifyToken,
-  authorize("GUEST"),
+  authorize("GUEST", "ADMIN"),
   markAllNotificationsAsRead,
 );
 router.patch(
   "/:id/read",
   verifyToken,
-  authorize("GUEST"),
+  authorize("GUEST", "ADMIN"),
   markNotificationAsRead,
 );
 

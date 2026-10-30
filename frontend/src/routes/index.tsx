@@ -43,6 +43,7 @@ export default function AppRoutes() {
           <Route path="/dashboard" element={<GuestDashboardLayout />}>
             <Route index element={<GuestDashboard />} />
             <Route path="reservations" element={<GuestReservations />} />
+            <Route path="notifications" element={<Notifications />} />
             <Route path="profile" element={<Profile />} />
           </Route>
           <Route
@@ -54,12 +55,16 @@ export default function AppRoutes() {
             path="/profile"
             element={<Navigate to="/dashboard/profile" replace />}
           />
-          <Route path="/notifications" element={<Notifications />} />
+          <Route
+            path="/notifications"
+            element={<Navigate to="/dashboard/notifications" replace />}
+          />
         </Route>
       </Route>
       <Route element={<AdminGuard />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/notifications" element={<Notifications />} />
           <Route path="/admin/rooms" element={<AdminRooms />} />
           <Route
             path="/admin/rooms/:roomId"

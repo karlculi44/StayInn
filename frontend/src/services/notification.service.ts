@@ -3,8 +3,18 @@ import type { Notification } from "../types/notification";
 
 export const NOTIFICATIONS_UPDATED_EVENT = "stayinn:notifications-updated";
 
-export const getNotifications = async (): Promise<Notification[]> => {
-  const response = await api.get<Notification[]>("/notifications");
+export type NotificationQuery = {
+  limit?: number;
+  offset?: number;
+  unreadOnly?: boolean;
+};
+
+export const getNotifications = async (
+  query: NotificationQuery = {},
+): Promise<Notification[]> => {
+  const response = await api.get<Notification[]>("/notifications", {
+    params: query,
+  });
   return response.data;
 };
 

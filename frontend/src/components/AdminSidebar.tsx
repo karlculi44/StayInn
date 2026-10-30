@@ -23,6 +23,12 @@ export function AdminNavIcon({ name }: { name: AdminNavIconName }) {
           <rect x="3" y="13" width="8" height="8" rx="1.5" />
         </>
       )}
+      {name === "notifications" && (
+        <>
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M10 21h4" />
+        </>
+      )}
       {name === "rooms" && (
         <>
           <path d="M3 18v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5" />
