@@ -10,6 +10,7 @@ import {
   updateReservationForAdmin,
   updateReservationForGuest,
 } from "../services/reservationCreation.js";
+import { createNotification } from "../services/notificationCreation.js";
 
 const validTransitions: Record<ReservationStatus, ReservationStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -30,6 +31,7 @@ export const createReservation = asyncHandler(
     const reservation = await createReservationForUser({
       userId,
       actorId: userId,
+      notifyAdmins: true,
       roomId,
       checkIn,
       checkOut,
@@ -428,14 +430,13 @@ export const updateReservationStatus = asyncHandler(
       });
 
       if (reservation.userId) {
-        await transaction.notification.create({
-          data: {
-            type: "RESERVATION_STATUS_UPDATED",
-            title: "Reservation status updated",
-            message: `Your reservation ${reservation.referenceId} is now ${status.toLowerCase()}.`,
-            userId: reservation.userId,
-            reservationId: reservation.id,
-          },
+        await createNotification(transaction, {
+          type: "RESERVATION_STATUS_UPDATED",
+          title: "Reservation status updated",
+          message: `Your reservation ${reservation.referenceId} is now ${status.toLowerCase()}.`,
+          referenceId: reservation.id,
+          referenceType: "RESERVATION",
+          recipientIds: [reservation.userId],
         });
       }
 

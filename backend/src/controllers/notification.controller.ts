@@ -3,6 +3,65 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { getStringParam } from "../utils/getParam.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../lib/prisma.js";
+import type { Prisma } from "@prisma/client";
+
+type NotificationRow = Prisma.NotificationGetPayload<{
+  include: {
+    recipients: {
+      select: {
+        isRead: true;
+        readAt: true;
+      };
+    };
+  };
+}>;
+
+const serializeNotifications = async (rows: NotificationRow[]) => {
+  const reservationIds = rows.flatMap((notification) =>
+    notification.referenceType === "RESERVATION" && notification.referenceId
+      ? [notification.referenceId]
+      : [],
+  );
+  const reservations = reservationIds.length
+    ? await prisma.reservation.findMany({
+        where: { id: { in: reservationIds } },
+        select: {
+          id: true,
+          referenceId: true,
+          status: true,
+          user: { select: { firstName: true, lastName: true } },
+        },
+      })
+    : [];
+  const reservationsById = new Map(
+    reservations.map((reservation) => [reservation.id, reservation]),
+  );
+
+  return rows.map(({ recipients, ...notification }) => {
+    const recipient = recipients[0];
+    const reservation =
+      notification.referenceType === "RESERVATION" &&
+      notification.referenceId
+        ? reservationsById.get(notification.referenceId)
+        : undefined;
+
+    return {
+      ...notification,
+      readAt: recipient?.readAt ?? null,
+      isRead: recipient?.isRead ?? false,
+      reservation: reservation
+        ? {
+            id: reservation.id,
+            referenceId: reservation.referenceId,
+            status: reservation.status,
+            guestName: reservation.user
+              ? `${reservation.user.firstName} ${reservation.user.lastName}`.trim()
+              : null,
+          }
+        : null,
+    };
+  });
+};
 
 const parseIntegerQuery = (
   value: unknown,
@@ -57,15 +116,25 @@ export const getNotifications = asyncHandler(
     const unreadOnly = parseUnreadOnlyQuery(req.query.unreadOnly);
     const notifications = await prisma.notification.findMany({
       where: {
-        userId: req.user.userId,
-        ...(unreadOnly ? { readAt: null } : {}),
+        recipients: {
+          some: {
+            userId: req.user.userId,
+            ...(unreadOnly ? { isRead: false } : {}),
+          },
+        },
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: {
+        recipients: {
+          where: { userId: req.user.userId },
+          select: { isRead: true, readAt: true },
+        },
+      },
       ...(limit === undefined ? {} : { take: limit }),
       ...(offset === undefined ? {} : { skip: offset }),
     });
 
-    res.json(notifications);
+    res.json(await serializeNotifications(notifications));
   },
 );
 
@@ -77,8 +146,9 @@ export const getUnreadNotificationCount = asyncHandler(
 
     const count = await prisma.notification.count({
       where: {
-        userId: req.user.userId,
-        readAt: null,
+        recipients: {
+          some: { userId: req.user.userId, isRead: false },
+        },
       },
     });
 
@@ -93,12 +163,12 @@ export const markAllNotificationsAsRead = asyncHandler(
     }
 
     const readAt = new Date();
-    const result = await prisma.notification.updateMany({
+    const result = await prisma.notificationRecipient.updateMany({
       where: {
         userId: req.user.userId,
-        readAt: null,
+        isRead: false,
       },
-      data: { readAt },
+      data: { isRead: true, readAt },
     });
 
     res.json({ count: result.count, readAt: readAt.toISOString() });
@@ -116,19 +186,50 @@ export const markNotificationAsRead = asyncHandler(
       throw new AppError("Invalid notification ID", 400);
     }
 
-    const notification = await prisma.notification.findFirst({
-      where: { id, userId: req.user.userId },
+    const recipient = await prisma.notificationRecipient.findUnique({
+      where: {
+        notificationId_userId: {
+          notificationId: id,
+          userId: req.user.userId,
+        },
+      },
+      include: {
+        notification: {
+          include: {
+            recipients: {
+              where: { userId: req.user.userId },
+              select: { isRead: true, readAt: true },
+            },
+          },
+        },
+      },
     });
 
-    if (!notification) {
+    if (!recipient) {
       throw new AppError("Notification not found", 404);
     }
 
-    const updatedNotification = await prisma.notification.update({
-      where: { id },
-      data: { readAt: notification.readAt ?? new Date() },
+    const updatedRecipient = await prisma.notificationRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        isRead: true,
+        readAt: recipient.readAt ?? new Date(),
+      },
+      include: {
+        notification: {
+          include: {
+            recipients: {
+              where: { userId: req.user.userId },
+              select: { isRead: true, readAt: true },
+            },
+          },
+        },
+      },
     });
 
+    const [updatedNotification] = await serializeNotifications([
+      updatedRecipient.notification,
+    ]);
     res.json(updatedNotification);
   },
 );

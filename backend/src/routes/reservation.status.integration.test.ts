@@ -65,17 +65,25 @@ describe("Reservation cancellation and status transitions", () => {
     createdAt: Date,
     readAt: Date | null = null,
   ) {
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         type: "RESERVATION_STATUS_UPDATED",
         title: "Reservation status updated",
         message: "Your reservation status changed.",
-        userId,
-        reservationId,
+        referenceType: "RESERVATION",
+        referenceId: reservationId,
         createdAt,
+      },
+    });
+    await prisma.notificationRecipient.create({
+      data: {
+        notificationId: notification.id,
+        userId,
+        isRead: readAt !== null,
         readAt,
       },
     });
+    return notification;
   }
 
   async function createTestHistory(
@@ -174,7 +182,8 @@ describe("Reservation cancellation and status transitions", () => {
 
       await prisma.notification.deleteMany({
         where: {
-          reservationId: { in: [...createdReservationIds] },
+          referenceType: "RESERVATION",
+          referenceId: { in: [...createdReservationIds] },
         },
       });
 
@@ -285,7 +294,11 @@ describe("Reservation cancellation and status transitions", () => {
     expect(response.body.status).toBe("CONFIRMED");
 
     const notifications = await prisma.notification.findMany({
-      where: { userId: guestId, reservationId: reservation.id },
+      where: {
+        referenceType: "RESERVATION",
+        referenceId: reservation.id,
+        recipients: { some: { userId: guestId } },
+      },
     });
 
     expect(notifications).toHaveLength(1);
@@ -293,6 +306,8 @@ describe("Reservation cancellation and status transitions", () => {
       type: "RESERVATION_STATUS_UPDATED",
       title: "Reservation status updated",
       message: `Your reservation ${reservation.referenceId} is now confirmed.`,
+      referenceType: "RESERVATION",
+      referenceId: reservation.id,
     });
 
     const adminOnlyHistory = await createTestHistory(
@@ -379,9 +394,12 @@ describe("Reservation cancellation and status transitions", () => {
       .get("/api/notifications")
       .set("Cookie", authCookie(adminId, "ADMIN"));
     expect(adminListResponse.status).toBe(200);
-    expect(adminListResponse.body.map((item: { id: string }) => item.id)).toEqual([
-      adminNotification.id,
-    ]);
+    expect(
+      adminListResponse.body.map((item: { id: string }) => item.id),
+    ).toContain(adminNotification.id);
+    expect(
+      adminListResponse.body.map((item: { id: string }) => item.id),
+    ).not.toContain(notifications[0].id);
 
     const unreadCountResponse = await request(app)
       .get("/api/notifications/unread-count")
@@ -405,6 +423,16 @@ describe("Reservation cancellation and status transitions", () => {
 
     expect(markReadResponse.status).toBe(200);
     expect(markReadResponse.body.readAt).toBeTruthy();
+
+    const guestRecipient = await prisma.notificationRecipient.findUniqueOrThrow({
+      where: {
+        notificationId_userId: {
+          notificationId: notifications[0].id,
+          userId: guestId,
+        },
+      },
+    });
+    expect(guestRecipient.isRead).toBe(true);
 
     const updatedUnreadCountResponse = await request(app)
       .get("/api/notifications/unread-count")
@@ -500,14 +528,14 @@ describe("Reservation cancellation and status transitions", () => {
     expect(response.body.count).toBe(2);
     expect(response.body.readAt).toBeTruthy();
 
-    const unreadNotifications = await prisma.notification.findMany({
-      where: { userId: guestId, readAt: null },
+    const unreadNotifications = await prisma.notificationRecipient.findMany({
+      where: { userId: guestId, isRead: false },
     });
 
     expect(unreadNotifications).toHaveLength(0);
 
-    const otherGuestUnreadCount = await prisma.notification.count({
-      where: { userId: otherGuestId, readAt: null },
+    const otherGuestUnreadCount = await prisma.notificationRecipient.count({
+      where: { userId: otherGuestId, isRead: false },
     });
 
     expect(otherGuestUnreadCount).toBe(1);

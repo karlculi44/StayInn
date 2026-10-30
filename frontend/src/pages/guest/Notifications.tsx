@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { EmptyState, ErrorState, Loading } from "../../components/ui/States";
+import NotificationTypeIcon from "../../components/ui/NotificationTypeIcon";
 import { useAuth } from "../../context/useAuth";
 import {
   getNotifications,
@@ -13,45 +14,9 @@ import { formatRelativeTime } from "../../utils/format";
 
 const PAGE_SIZE = 20;
 
-function NotificationTypeIcon({ type }: { type: Notification["type"] }) {
-  if (type === "RESERVATION_STATUS_UPDATED") {
-    return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="size-5"
-      >
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M16 3v4M8 3v4M3 10h18" />
-        <path d="m9 16 2 2 4-4" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="size-5"
-    >
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
-    </svg>
-  );
-}
-
 export default function Notifications() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -107,9 +72,9 @@ export default function Notifications() {
     setRetryCount((count) => count + 1);
   };
 
-  const handleMarkAsRead = async (id: string) => {
+  const handleMarkAsRead = async (id: string): Promise<boolean> => {
     if (pendingIdsRef.current.has(id)) {
-      return;
+      return false;
     }
 
     pendingIdsRef.current.add(id);
@@ -126,10 +91,12 @@ export default function Notifications() {
           ),
         );
       }
+      return true;
     } catch {
       setActionError(
         "Unable to update this notification. Please try again.",
       );
+      return false;
     } finally {
       pendingIdsRef.current.delete(id);
       setPendingIds(new Set(pendingIdsRef.current));
@@ -152,7 +119,7 @@ export default function Notifications() {
           : current.map((notification) =>
               notification.readAt
                 ? notification
-                : { ...notification, readAt: result.readAt },
+                : { ...notification, isRead: true, readAt: result.readAt },
             ),
       );
       if (filter === "unread") {
@@ -196,13 +163,16 @@ export default function Notifications() {
   };
 
   const getReservationPath = (notification: Notification) => {
-    if (!notification.reservationId) {
+    if (
+      notification.referenceType !== "RESERVATION" ||
+      !notification.referenceId
+    ) {
       return undefined;
     }
 
     return user?.role === "ADMIN"
-      ? `/admin/reservations/${notification.reservationId}`
-      : `/reservations/${notification.reservationId}`;
+      ? `/admin/reservations/${notification.referenceId}`
+      : `/reservations/${notification.referenceId}`;
   };
 
   return (
@@ -327,12 +297,23 @@ export default function Notifications() {
                         >
                           {formatRelativeTime(notification.createdAt)}
                         </time>
+                        {notification.reservation && (
+                          <p className="mt-2 text-xs font-medium text-ink">
+                            Reservation {notification.reservation.referenceId}
+                            {" · "}
+                            {notification.reservation.status.toLowerCase()}
+                          </p>
+                        )}
                         {reservationPath && (
                           <Link
                             to={reservationPath}
-                            onClick={() => {
-                              if (!notification.readAt) {
-                                void handleMarkAsRead(notification.id);
+                            onClick={async (event) => {
+                              if (notification.isRead) {
+                                return;
+                              }
+                              event.preventDefault();
+                              if (await handleMarkAsRead(notification.id)) {
+                                navigate(reservationPath);
                               }
                             }}
                             className="mt-3 inline-block rounded-sm text-sm font-semibold text-sage hover:text-sage-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage"

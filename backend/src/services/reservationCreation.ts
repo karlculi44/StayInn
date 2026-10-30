@@ -2,10 +2,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/AppError.js";
 import { createWithReservationReference } from "../utils/reservationReference.js";
+import { createNotification } from "./notificationCreation.js";
 
 type CreateReservationInput = {
   userId: string;
   actorId: string;
+  notifyAdmins?: boolean;
   roomId: string;
   checkIn: Date;
   checkOut: Date;
@@ -161,6 +163,7 @@ const calculateTotalAmount = (
 export const createReservationForUser = async ({
   userId,
   actorId,
+  notifyAdmins = false,
   roomId,
   checkIn,
   checkOut,
@@ -247,6 +250,28 @@ export const createReservationForUser = async ({
           visibility: "GUEST_VISIBLE",
         },
       });
+
+      if (notifyAdmins) {
+        const admins = await tx.$queryRaw<{ id: string }[]>`
+          SELECT "id"
+          FROM "User"
+          WHERE "role" = 'ADMIN'
+          ORDER BY "id"
+          FOR SHARE
+        `;
+        const guestName = reservation.user
+          ? `${reservation.user.firstName} ${reservation.user.lastName}`.trim()
+          : "A guest";
+
+        await createNotification(tx, {
+          type: "NEW_RESERVATION",
+          title: "New Reservation Received",
+          message: `${guestName} has submitted a new reservation.`,
+          referenceId: reservation.id,
+          referenceType: "RESERVATION",
+          recipientIds: admins.map(({ id }) => id),
+        });
+      }
 
       return reservation;
     }),

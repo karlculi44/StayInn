@@ -17,11 +17,11 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  reservations       Reservation[]
-  refreshTokens      RefreshToken[]
-  roomStatusChanges  RoomStatusHistory[]  @relation("RoomStatusChangedBy")
-  notifications      Notification[]
-  reservationHistory ReservationHistory[] @relation("ReservationHistoryActor")
+  reservations           Reservation[]
+  refreshTokens          RefreshToken[]
+  roomStatusChanges      RoomStatusHistory[]     @relation("RoomStatusChangedBy")
+  notificationRecipients NotificationRecipient[]
+  reservationHistory     ReservationHistory[]    @relation("ReservationHistoryActor")
 }
 
 enum Role {
@@ -98,8 +98,7 @@ model Reservation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  notifications Notification[]
-  history       ReservationHistory[]
+  history ReservationHistory[]
 }
 
 enum ReservationStatus {
@@ -141,23 +140,39 @@ enum ReservationHistoryVisibility {
 }
 
 model Notification {
-  id        String           @id @default(uuid())
-  type      NotificationType
-  title     String
-  message   String
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
+  id            String                     @id @default(uuid())
+  type          NotificationType
+  title         String
+  message       String
+  referenceId   String?
+  referenceType NotificationReferenceType?
+  createdAt     DateTime                   @default(now())
+  recipients    NotificationRecipient[]
 
-  userId        String
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reservationId String?
-  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+}
 
-  @@index([userId, createdAt])
+model NotificationRecipient {
+  id             String       @id @default(uuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+
+  @@unique([notificationId, userId])
+  @@index([userId, isRead])
 }
 
 enum NotificationType {
   RESERVATION_STATUS_UPDATED
+  NEW_RESERVATION
+}
+
+enum NotificationReferenceType {
+  RESERVATION
 }
 
 model RefreshToken {

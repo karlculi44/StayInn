@@ -7,6 +7,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
+import NotificationTypeIcon from "./NotificationTypeIcon";
 import { useAuth } from "../../context/useAuth";
 import {
   getNotifications,
@@ -25,13 +26,16 @@ function getNotificationPath(
   notification: Notification,
   role?: string,
 ): string | undefined {
-  if (!notification.reservationId) {
+  if (
+    notification.referenceType !== "RESERVATION" ||
+    !notification.referenceId
+  ) {
     return undefined;
   }
 
   return role === "ADMIN"
-    ? `/admin/reservations/${notification.reservationId}`
-    : `/reservations/${notification.reservationId}`;
+    ? `/admin/reservations/${notification.referenceId}`
+    : `/reservations/${notification.referenceId}`;
 }
 
 export default function NotificationLink({
@@ -172,7 +176,7 @@ export default function NotificationLink({
         current.map((notification) =>
           notification.readAt
             ? notification
-            : { ...notification, readAt: result.readAt },
+            : { ...notification, isRead: true, readAt: result.readAt },
         ),
       );
     } catch {
@@ -204,9 +208,6 @@ export default function NotificationLink({
     }
   };
 
-  const hasUnreadNotifications =
-    unreadCount > 0 || notifications.some((notification) => !notification.readAt);
-
   return (
     <>
       <button
@@ -236,7 +237,7 @@ export default function NotificationLink({
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
           <path d="M10 21h4" />
         </svg>
-        {hasUnreadNotifications && (
+        {unreadCount > 0 && (
           <span
             aria-hidden="true"
             className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
@@ -307,8 +308,10 @@ export default function NotificationLink({
                         <span className="flex items-start gap-3">
                           <span
                             aria-hidden="true"
-                            className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.readAt ? "bg-transparent" : "bg-sage"}`}
-                          />
+                            className={`flex size-9 shrink-0 items-center justify-center rounded-full ${notification.isRead ? "bg-black/5 text-muted" : "bg-sage/15 text-sage"}`}
+                          >
+                            <NotificationTypeIcon type={notification.type} />
+                          </span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-semibold text-ink">
                               {notification.title}

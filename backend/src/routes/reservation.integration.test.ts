@@ -11,6 +11,7 @@ let testRoomId = "";
 let adminId = "";
 let accessToken = "";
 const createdUserIds: string[] = [];
+const createdAdminIds: string[] = [];
 
 const futureDate = (daysFromNow: number) => {
   const date = new Date();
@@ -162,6 +163,18 @@ describe("Reservation booking integration tests", () => {
       },
     });
     adminId = admin.id;
+    createdAdminIds.push(admin.id);
+
+    const secondAdmin = await prisma.user.create({
+      data: {
+        firstName: "Reservation",
+        lastName: "Admin Two",
+        email: `reservation-admin-${randomUUID()}@example.com`,
+        password: "test-password-hash",
+        role: "ADMIN",
+      },
+    });
+    createdAdminIds.push(secondAdmin.id);
 
     accessToken = jwt.sign(
       {
@@ -206,7 +219,10 @@ describe("Reservation booking integration tests", () => {
           where: { reservationId: { in: reservationIds } },
         });
         await prisma.notification.deleteMany({
-          where: { reservationId: { in: reservationIds } },
+          where: {
+            referenceType: "RESERVATION",
+            referenceId: { in: reservationIds },
+          },
         });
         await prisma.reservation.deleteMany({
           where: { id: { in: reservationIds } },
@@ -243,6 +259,11 @@ describe("Reservation booking integration tests", () => {
         where: { id: adminId },
       });
     }
+    if (createdAdminIds.length > 1) {
+      await prisma.user.deleteMany({
+        where: { id: { in: createdAdminIds.slice(1) } },
+      });
+    }
 
     await prisma.$disconnect();
   });
@@ -277,6 +298,206 @@ describe("Reservation booking integration tests", () => {
       visibility: "GUEST_VISIBLE",
       description: "Your reservation has been successfully received.",
     });
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        type: "NEW_RESERVATION",
+        referenceType: "RESERVATION",
+        referenceId: response.body.id,
+      },
+      include: {
+        recipients: {
+          select: {
+            userId: true,
+            isRead: true,
+            user: { select: { role: true } },
+          },
+        },
+      },
+    });
+    expect(notifications).toHaveLength(1);
+    const notification = notifications[0];
+
+    expect(notification).toMatchObject({
+      title: "New Reservation Received",
+      message: "Reservation Tester has submitted a new reservation.",
+    });
+    expect(
+      notification?.recipients
+        .map(({ userId, isRead }) => ({ userId, isRead })),
+    ).toEqual(
+      expect.arrayContaining(
+        createdAdminIds.map((id) => ({ userId: id, isRead: false })),
+      ),
+    );
+    expect(
+      notification?.recipients.every(({ user }) => user.role === "ADMIN"),
+    ).toBe(true);
+
+    const guestNotifications = await prisma.notificationRecipient.findMany({
+      where: { notificationId: notification?.id, userId: user.id },
+    });
+    expect(guestNotifications).toHaveLength(0);
+
+    const guestToken = jwt.sign(
+      { userId: user.id, role: "GUEST" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+    const guestList = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", `accessToken=${guestToken}`);
+    expect(
+      guestList.body.some(
+        (item: { id: string }) => item.id === notification?.id,
+      ),
+    ).toBe(false);
+    const guestMarkRead = await request(app)
+      .patch(`/api/notifications/${notification?.id}/read`)
+      .set("Cookie", `accessToken=${guestToken}`);
+    expect(guestMarkRead.status).toBe(404);
+
+    const adminToken = jwt.sign(
+      { userId: createdAdminIds[0], role: "ADMIN" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+    const adminList = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", `accessToken=${adminToken}`);
+    expect(adminList.status).toBe(200);
+    expect(
+      adminList.body.find(
+        (item: { id: string }) => item.id === notification?.id,
+      ),
+    ).toMatchObject({
+      id: notification?.id,
+      type: "NEW_RESERVATION",
+      referenceType: "RESERVATION",
+      referenceId: response.body.id,
+      readAt: null,
+      isRead: false,
+      reservation: {
+        id: response.body.id,
+        referenceId: response.body.referenceId,
+        status: "PENDING",
+        guestName: "Reservation Tester",
+      },
+    });
+
+    const firstAdminToken = jwt.sign(
+      { userId: createdAdminIds[0], role: "ADMIN" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+    const secondAdminToken = jwt.sign(
+      { userId: createdAdminIds[1], role: "ADMIN" },
+      process.env.JWT_ACCESS_TOKEN_SECRET as string,
+      { expiresIn: "5m" },
+    );
+    const firstAdminUnreadBefore = await request(app)
+      .get("/api/notifications/unread-count")
+      .set("Cookie", `accessToken=${firstAdminToken}`);
+    const secondAdminUnreadBefore = await request(app)
+      .get("/api/notifications/unread-count")
+      .set("Cookie", `accessToken=${secondAdminToken}`);
+    const markRead = await request(app)
+      .patch(`/api/notifications/${notification?.id}/read`)
+      .set("Cookie", `accessToken=${firstAdminToken}`);
+    expect(markRead.status).toBe(200);
+    expect(markRead.body.isRead).toBe(true);
+    const firstAdminUnreadAfter = await request(app)
+      .get("/api/notifications/unread-count")
+      .set("Cookie", `accessToken=${firstAdminToken}`);
+    const secondAdminUnreadAfter = await request(app)
+      .get("/api/notifications/unread-count")
+      .set("Cookie", `accessToken=${secondAdminToken}`);
+    expect(firstAdminUnreadAfter.body.count).toBe(
+      firstAdminUnreadBefore.body.count - 1,
+    );
+    expect(secondAdminUnreadAfter.body.count).toBe(
+      secondAdminUnreadBefore.body.count,
+    );
+
+    const recipientsAfterRead = await prisma.notificationRecipient.findMany({
+      where: { notificationId: notification?.id },
+      select: { userId: true, isRead: true },
+    });
+    expect(recipientsAfterRead).toContainEqual({
+      userId: createdAdminIds[0],
+      isRead: true,
+    });
+    expect(recipientsAfterRead).toContainEqual({
+      userId: createdAdminIds[1],
+      isRead: false,
+    });
+
+    const secondAdminList = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", `accessToken=${secondAdminToken}`);
+    expect(
+      secondAdminList.body.find(
+        (item: { id: string }) => item.id === notification?.id,
+      ),
+    ).toMatchObject({ isRead: false, readAt: null });
+
+    const markAllRead = await request(app)
+      .patch("/api/notifications/read-all")
+      .set("Cookie", `accessToken=${secondAdminToken}`);
+    expect(markAllRead.status).toBe(200);
+    const recipientsAfterMarkAll = await prisma.notificationRecipient.findMany({
+      where: { notificationId: notification?.id },
+      select: { userId: true, isRead: true },
+    });
+    expect(recipientsAfterMarkAll).toContainEqual({
+      userId: createdAdminIds[0],
+      isRead: true,
+    });
+    expect(recipientsAfterMarkAll).toContainEqual({
+      userId: createdAdminIds[1],
+      isRead: true,
+    });
+
+    const confirmReservation = await request(app)
+      .patch(`/api/reservations/${response.body.id}/status`)
+      .set("Cookie", `accessToken=${secondAdminToken}`)
+      .send({ status: "CONFIRMED" });
+    expect(confirmReservation.status).toBe(200);
+    const latestAdminNotifications = await request(app)
+      .get("/api/notifications")
+      .set("Cookie", `accessToken=${secondAdminToken}`);
+    expect(
+      latestAdminNotifications.body.find(
+        (item: { id: string }) => item.id === notification?.id,
+      )?.reservation,
+    ).toMatchObject({
+      referenceId: response.body.referenceId,
+      status: "CONFIRMED",
+      guestName: "Reservation Tester",
+    });
+  });
+
+  it("does not create new reservation notifications for failed bookings", async () => {
+    const user = await createTestUser();
+    const checkIn = futureDate(31);
+    const checkOut = futureDate(33);
+    const existingReservation = await createExistingReservation(
+      user.id,
+      checkIn,
+      checkOut,
+    );
+    const response = await bookRoom(user.id, checkIn, checkOut);
+
+    expect(response.status).toBe(409);
+    expect(
+      await prisma.notification.count({
+        where: {
+          type: "NEW_RESERVATION",
+          referenceType: "RESERVATION",
+          referenceId: existingReservation.id,
+        },
+      }),
+    ).toBe(0);
   });
 
   it("rejects admin accounts from guest self-service reservation creation", async () => {
@@ -321,6 +542,15 @@ describe("Reservation booking integration tests", () => {
       visibility: "GUEST_VISIBLE",
       description: "A reservation has been created for you.",
     });
+    expect(
+      await prisma.notification.count({
+        where: {
+          type: "NEW_RESERVATION",
+          referenceType: "RESERVATION",
+          referenceId: response.body.id,
+        },
+      }),
+    ).toBe(0);
   });
 
   it("returns reservation details to an authorized admin", async () => {
