@@ -12,6 +12,7 @@ describe("Reservation cancellation and status transitions", () => {
   let guestId = "";
   let otherGuestId = "";
   let adminId = "";
+  let secondAdminId = "";
 
   const createdReservationIds: string[] = [];
 
@@ -77,6 +78,24 @@ describe("Reservation cancellation and status transitions", () => {
     });
   }
 
+  async function createTestHistory(
+    reservationId: string,
+    actorId: string,
+    visibility: "ADMIN_ONLY" | "GUEST_VISIBLE",
+  ) {
+    return prisma.reservationHistory.create({
+      data: {
+        reservationId,
+        actorId,
+        action: "UPDATED",
+        description: "Internal operational detail.",
+        oldValues: { internal: "before" },
+        newValues: { internal: "after" },
+        visibility,
+      },
+    });
+  }
+
   beforeAll(async () => {
     const roomType = await prisma.roomType.create({
       data: {
@@ -131,10 +150,28 @@ describe("Reservation cancellation and status transitions", () => {
     });
 
     adminId = admin.id;
+
+    const secondAdmin = await prisma.user.create({
+      data: {
+        firstName: "Second",
+        lastName: "Admin",
+        email: `status-admin-${randomUUID()}@example.com`,
+        password: "test-password-hash",
+        role: "ADMIN",
+      },
+    });
+
+    secondAdminId = secondAdmin.id;
   });
 
   afterEach(async () => {
     if (createdReservationIds.length > 0) {
+      await prisma.reservationHistory.deleteMany({
+        where: {
+          reservationId: { in: [...createdReservationIds] },
+        },
+      });
+
       await prisma.notification.deleteMany({
         where: {
           reservationId: { in: [...createdReservationIds] },
@@ -161,7 +198,9 @@ describe("Reservation cancellation and status transitions", () => {
       await prisma.roomType.deleteMany({ where: { id: roomTypeId } });
     }
 
-    const userIds = [guestId, otherGuestId, adminId].filter(Boolean);
+    const userIds = [guestId, otherGuestId, adminId, secondAdminId].filter(
+      Boolean,
+    );
 
     if (userIds.length > 0) {
       await prisma.user.deleteMany({
@@ -187,6 +226,16 @@ describe("Reservation cancellation and status transitions", () => {
     });
 
     expect(saved?.status).toBe("CANCELLED");
+    const history = await prisma.reservationHistory.findFirst({
+      where: { reservationId: reservation.id },
+    });
+    expect(history).toMatchObject({
+      actorId: guestId,
+      action: "CANCELLED",
+      visibility: "GUEST_VISIBLE",
+      oldValues: { status: "PENDING" },
+      newValues: { status: "CANCELLED" },
+    });
   });
 
   it("prevents a guest from cancelling another guest's reservation", async () => {
@@ -245,6 +294,51 @@ describe("Reservation cancellation and status transitions", () => {
       title: "Reservation status updated",
       message: `Your reservation ${reservation.referenceId} is now confirmed.`,
     });
+
+    const adminOnlyHistory = await createTestHistory(
+      reservation.id,
+      adminId,
+      "ADMIN_ONLY",
+    );
+    const guestHistoryResponse = await request(app)
+      .get(`/api/reservations/${reservation.id}/history`)
+      .set("Cookie", authCookie(guestId, "GUEST"));
+
+    expect(guestHistoryResponse.status).toBe(200);
+    expect(guestHistoryResponse.body).toHaveLength(1);
+    expect(guestHistoryResponse.body[0]).toMatchObject({
+      action: "CONFIRMED",
+      visibility: "GUEST_VISIBLE",
+    });
+    expect(guestHistoryResponse.body[0]).not.toHaveProperty("actor");
+    expect(
+      JSON.stringify(guestHistoryResponse.body),
+    ).not.toContain("Internal operational detail");
+
+    const adminHistoryResponse = await request(app)
+      .get(`/api/reservations/${reservation.id}/history`)
+      .set("Cookie", authCookie(secondAdminId, "ADMIN"));
+
+    expect(adminHistoryResponse.status).toBe(200);
+    expect(adminHistoryResponse.body).toHaveLength(2);
+    expect(
+      adminHistoryResponse.body.map(
+        (entry: { id: string }) => entry.id,
+      ),
+    ).toContain(adminOnlyHistory.id);
+    expect(
+      adminHistoryResponse.body.find(
+        (entry: { action: string }) => entry.action === "CONFIRMED",
+      )?.actor,
+    ).toMatchObject({
+      id: adminId,
+      role: "ADMIN",
+    });
+
+    const unauthorizedHistoryResponse = await request(app)
+      .get(`/api/reservations/${reservation.id}/history`)
+      .set("Cookie", authCookie(otherGuestId, "GUEST"));
+    expect(unauthorizedHistoryResponse.status).toBe(403);
 
     const adminNotification = await createTestNotification(
       adminId,
@@ -325,6 +419,31 @@ describe("Reservation cancellation and status transitions", () => {
 
     expect(otherGuestResponse.status).toBe(404);
     expect(otherGuestResponse.body.message).toBe("Notification not found");
+
+    const duplicateConfirmation = await request(app)
+      .patch(`/api/reservations/${reservation.id}/status`)
+      .set("Cookie", authCookie(secondAdminId, "ADMIN"))
+      .send({ status: "CONFIRMED" });
+    expect(duplicateConfirmation.status).toBe(400);
+
+    const completionResponse = await request(app)
+      .patch(`/api/reservations/${reservation.id}/status`)
+      .set("Cookie", authCookie(secondAdminId, "ADMIN"))
+      .send({ status: "COMPLETED" });
+    expect(completionResponse.status).toBe(200);
+
+    const completionHistory = await prisma.reservationHistory.findFirst({
+      where: {
+        reservationId: reservation.id,
+        action: "COMPLETED",
+      },
+    });
+    expect(completionHistory).toMatchObject({
+      actorId: secondAdminId,
+      visibility: "GUEST_VISIBLE",
+      oldValues: { status: "CONFIRMED" },
+      newValues: { status: "COMPLETED" },
+    });
     const guestCannotReadAdminsNotification = await request(app)
       .patch(`/api/notifications/${adminNotification.id}/read`)
       .set("Cookie", authCookie(guestId, "GUEST"));
@@ -406,6 +525,38 @@ describe("Reservation cancellation and status transitions", () => {
     expect(response.body.message).toBe(
       "Invalid status transition from CANCELLED to CONFIRMED",
     );
+    expect(
+      await prisma.reservationHistory.count({
+        where: { reservationId: reservation.id },
+      }),
+    ).toBe(0);
+  });
+
+  it("serializes concurrent confirmation attempts and records only the winning action", async () => {
+    const reservation = await createTestReservation(guestId, "PENDING", 30);
+    const [firstResponse, secondResponse] = await Promise.all([
+      request(app)
+        .patch(`/api/reservations/${reservation.id}/status`)
+        .set("Cookie", authCookie(adminId, "ADMIN"))
+        .send({ status: "CONFIRMED" }),
+      request(app)
+        .patch(`/api/reservations/${reservation.id}/status`)
+        .set("Cookie", authCookie(secondAdminId, "ADMIN"))
+        .send({ status: "CONFIRMED" }),
+    ]);
+
+    expect([firstResponse.status, secondResponse.status].sort()).toEqual([
+      200,
+      400,
+    ]);
+    expect(
+      await prisma.reservationHistory.count({
+        where: {
+          reservationId: reservation.id,
+          action: "CONFIRMED",
+        },
+      }),
+    ).toBe(1);
   });
 
   it("prevents a guest from updating admin reservation status", async () => {

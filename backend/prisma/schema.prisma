@@ -17,10 +17,11 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  reservations      Reservation[]
-  refreshTokens     RefreshToken[]
-  roomStatusChanges RoomStatusHistory[] @relation("RoomStatusChangedBy")
-  notifications     Notification[]
+  reservations       Reservation[]
+  refreshTokens      RefreshToken[]
+  roomStatusChanges  RoomStatusHistory[]  @relation("RoomStatusChangedBy")
+  notifications      Notification[]
+  reservationHistory ReservationHistory[] @relation("ReservationHistoryActor")
 }
 
 enum Role {
@@ -47,12 +48,12 @@ model Room {
   status     RoomStatus @default(AVAILABLE)
 
   roomTypeId String
-  roomType   RoomType   @relation(fields: [roomTypeId], references: [id])
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reservations Reservation[]
+  reservations  Reservation[]
   statusHistory RoomStatusHistory[]
 }
 
@@ -70,7 +71,7 @@ model RoomStatusHistory {
   createdAt      DateTime   @default(now())
 
   roomId String?
-  room   Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  room   Room?   @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   adminId String?
   admin   User?   @relation("RoomStatusChangedBy", fields: [adminId], references: [id], onDelete: SetNull)
@@ -89,7 +90,7 @@ model Reservation {
   status      ReservationStatus @default(PENDING)
 
   userId String?
-  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   roomId String
   room   Room   @relation(fields: [roomId], references: [id])
@@ -98,6 +99,7 @@ model Reservation {
   updatedAt DateTime @updatedAt
 
   notifications Notification[]
+  history       ReservationHistory[]
 }
 
 enum ReservationStatus {
@@ -107,18 +109,49 @@ enum ReservationStatus {
   COMPLETED
 }
 
+model ReservationHistory {
+  id            String                       @id @default(uuid())
+  reservationId String
+  reservation   Reservation                  @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  actorId       String?
+  actor         User?                        @relation("ReservationHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action        ReservationHistoryAction
+  description   String
+  oldValues     Json?
+  newValues     Json?
+  visibility    ReservationHistoryVisibility @default(GUEST_VISIBLE)
+  createdAt     DateTime                     @default(now())
+
+  @@index([reservationId, createdAt])
+  @@index([reservationId, visibility, createdAt])
+  @@index([actorId, createdAt])
+}
+
+enum ReservationHistoryAction {
+  CREATED
+  CONFIRMED
+  CANCELLED
+  UPDATED
+  COMPLETED
+}
+
+enum ReservationHistoryVisibility {
+  ADMIN_ONLY
+  GUEST_VISIBLE
+}
+
 model Notification {
-  id            String           @id @default(uuid())
-  type          NotificationType
-  title         String
-  message       String
-  readAt        DateTime?
-  createdAt     DateTime         @default(now())
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
 
   userId        String
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   reservationId String?
-  reservation   Reservation?     @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
 }

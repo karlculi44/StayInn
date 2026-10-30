@@ -12,6 +12,7 @@ import { getRoomTypeImage } from "../../utils/room-image";
 import axios from "axios";
 import { Button } from "../../components/ui/Button";
 import { updateGuestReservation } from "../../services/reservation.service";
+import ReservationHistoryTimeline from "../../components/ui/ReservationHistoryTimeline";
 
 const getTodayDateInput = () => {
   const today = new Date();
@@ -215,24 +216,9 @@ export default function ReservationDetails() {
 
       <h1 className="mt-2 font-display text-4xl">Reservation details</h1>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-6">
-          <section className="rounded-2xl bg-white p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-muted">
-                  Reference ID
-                </p>
-                <p className="mt-1 break-all font-semibold">
-                  {reservation.referenceId}
-                </p>
-              </div>
-              <ReservationStatus status={reservation.status} />
-            </div>
-            <p className="mt-4 text-sm text-muted">Booked on {createdAt}</p>
-          </section>
-
-          <section className="overflow-hidden rounded-2xl bg-white">
+      <div className="mt-8 flex flex-col gap-6 lg:grid lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="contents lg:flex lg:flex-col lg:gap-6">
+          <section className="order-2 overflow-hidden rounded-2xl bg-white lg:order-none">
             {showRoomImage ? (
               <img
                 src={roomImage}
@@ -267,7 +253,7 @@ export default function ReservationDetails() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-6">
+          <section className="order-3 rounded-2xl bg-white p-6 lg:order-none">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-display text-2xl">Stay details</h2>
               {canEdit && !isEditing && (
@@ -364,43 +350,66 @@ export default function ReservationDetails() {
           </section>
         </div>
 
-        <aside className="h-fit rounded-2xl bg-white p-6">
-          <h2 className="font-display text-2xl">Price summary</h2>
-          <div className="mt-5 space-y-4 text-sm">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted">
-                {formatCurrency(
-                  Number(reservation.room.roomType.pricePerNight),
-                )}{" "}
-                × {nights} {nights === 1 ? "night" : "nights"}
-              </span>
-              <span className="font-medium">
-                {formatCurrency(
-                  Number(reservation.room.roomType.pricePerNight) * nights,
-                )}
-              </span>
+        <div className="contents lg:flex lg:flex-col lg:gap-6">
+          <aside className="order-4 h-fit rounded-2xl bg-white p-6 lg:order-none">
+            <h2 className="font-display text-2xl">Price summary</h2>
+            <div className="mt-5 space-y-4 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted">
+                  {formatCurrency(
+                    Number(reservation.room.roomType.pricePerNight),
+                  )}{" "}
+                  × {nights} {nights === 1 ? "night" : "nights"}
+                </span>
+                <span className="font-medium">
+                  {formatCurrency(
+                    Number(reservation.room.roomType.pricePerNight) * nights,
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-black/10 pt-4">
+                <span className="font-semibold">Total amount</span>
+                <span className="text-xl font-bold">
+                  {formatCurrency(Number(reservation.totalAmount))}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between border-t border-black/10 pt-4">
-              <span className="font-semibold">Total amount</span>
-              <span className="text-xl font-bold">
-                {formatCurrency(Number(reservation.totalAmount))}
-              </span>
+
+            {error && <p className="mt-5 text-sm text-red-600">{error}</p>}
+
+            {canCancel && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={isCancelling}
+                className="mt-6 text-sm font-semibold text-red-600 disabled:opacity-50"
+              >
+                {isCancelling ? "Cancelling..." : "Cancel reservation"}
+              </button>
+            )}
+          </aside>
+
+          <section className="order-1 rounded-2xl bg-white p-6 lg:order-none">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-muted">
+                  Reference ID
+                </p>
+                <p className="mt-1 break-all font-semibold">
+                  {reservation.referenceId}
+                </p>
+              </div>
+              <ReservationStatus status={reservation.status} />
             </div>
-          </div>
-
-          {error && <p className="mt-5 text-sm text-red-600">{error}</p>}
-
-          {canCancel && (
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isCancelling}
-              className="mt-6 text-sm font-semibold text-red-600 disabled:opacity-50"
-            >
-              {isCancelling ? "Cancelling..." : "Cancel reservation"}
-            </button>
-          )}
-        </aside>
+            <p className="mt-4 text-sm text-muted">Booked on {createdAt}</p>
+          </section>
+        </div>
+      </div>
+      <div className="mt-8">
+        <ReservationHistoryTimeline
+          reservationId={reservation.id}
+          refreshKey={reservation.updatedAt}
+        />
       </div>
     </div>
   );

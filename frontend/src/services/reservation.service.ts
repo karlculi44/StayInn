@@ -4,6 +4,7 @@ import type {
   ReservationStatus,
 } from "../types/admin-reservation";
 import type { Reservation } from "../types/reservation";
+import type { ReservationHistory } from "../types/reservation-history";
 
 export const getReservations = async (): Promise<Reservation[]> => {
   try {
@@ -18,6 +19,15 @@ export const getReservations = async (): Promise<Reservation[]> => {
 export const getReservation = async (id: string): Promise<Reservation> => {
   const response = await api.get<Reservation>(`/reservations/${id}`);
 
+  return response.data;
+};
+
+export const getReservationHistory = async (
+  id: string,
+): Promise<ReservationHistory[]> => {
+  const response = await api.get<ReservationHistory[]>(
+    `/reservations/${id}/history`,
+  );
   return response.data;
 };
 

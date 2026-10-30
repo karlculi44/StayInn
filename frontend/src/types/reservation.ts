@@ -7,6 +7,7 @@ export type Reservation = {
   totalAmount: string;
   status: string;
   createdAt: string;
+  updatedAt: string;
   room: {
     id: string;
     roomNumber: string;

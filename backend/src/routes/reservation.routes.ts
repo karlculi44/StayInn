@@ -19,6 +19,7 @@ import {
   updateReservationStatus,
   updateAdminReservation,
   updateGuestReservation,
+  getReservationHistory,
 } from "../controllers/reservation.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 
@@ -45,6 +46,7 @@ router.get(
   authorize("ADMIN"),
   getAdminReservationById,
 );
+router.get("/:id/history", verifyToken, getReservationHistory);
 router.patch(
   "/admin/:id",
   verifyToken,

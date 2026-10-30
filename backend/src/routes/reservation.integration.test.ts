@@ -194,13 +194,27 @@ describe("Reservation booking integration tests", () => {
   });
 
   afterEach(async () => {
-    if (createdUserIds.length > 0) {
-      await prisma.reservation.deleteMany({
-        where: {
-          userId: { in: createdUserIds },
-        },
+    if (testRoomId) {
+      const reservations = await prisma.reservation.findMany({
+        where: { roomId: testRoomId },
+        select: { id: true },
       });
+      const reservationIds = reservations.map(({ id }) => id);
 
+      if (reservationIds.length > 0) {
+        await prisma.reservationHistory.deleteMany({
+          where: { reservationId: { in: reservationIds } },
+        });
+        await prisma.notification.deleteMany({
+          where: { reservationId: { in: reservationIds } },
+        });
+        await prisma.reservation.deleteMany({
+          where: { id: { in: reservationIds } },
+        });
+      }
+    }
+
+    if (createdUserIds.length > 0) {
       await prisma.user.deleteMany({
         where: {
           id: { in: createdUserIds },
@@ -208,13 +222,6 @@ describe("Reservation booking integration tests", () => {
       });
 
       createdUserIds.length = 0;
-    }
-
-    // Remove any remaining reservations attached to this test room.
-    if (testRoomId) {
-      await prisma.reservation.deleteMany({
-        where: { roomId: testRoomId },
-      });
     }
   });
 
@@ -259,6 +266,17 @@ describe("Reservation booking integration tests", () => {
       where: { id: response.body.id },
     });
     expect(savedReservation.referenceId).toBe(response.body.referenceId);
+
+    const history = await prisma.reservationHistory.findMany({
+      where: { reservationId: response.body.id },
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      actorId: user.id,
+      action: "CREATED",
+      visibility: "GUEST_VISIBLE",
+      description: "Your reservation has been successfully received.",
+    });
   });
 
   it("rejects admin accounts from guest self-service reservation creation", async () => {
@@ -292,6 +310,17 @@ describe("Reservation booking integration tests", () => {
       /^STY-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/,
     );
     expect(response.body.user.email).toBe(user.email);
+
+    const history = await prisma.reservationHistory.findMany({
+      where: { reservationId: response.body.id },
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      actorId: adminId,
+      action: "CREATED",
+      visibility: "GUEST_VISIBLE",
+      description: "A reservation has been created for you.",
+    });
   });
 
   it("returns reservation details to an authorized admin", async () => {
@@ -427,6 +456,7 @@ describe("Reservation booking integration tests", () => {
         data: { status: "AVAILABLE" },
       });
     }
+
   });
 
   it("rejects admin reservations that overlap an existing reservation", async () => {
@@ -488,6 +518,36 @@ describe("Reservation booking integration tests", () => {
     expect(Number(response.body.totalAmount)).toBe(300);
     expect(response.body.user.id).toBe(user.id);
     expect(response.body.room.id).toBe(testRoomId);
+
+    const history = await prisma.reservationHistory.findMany({
+      where: { reservationId: original.id },
+    });
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      actorId: adminId,
+      action: "UPDATED",
+      oldValues: {
+        checkIn: original.checkIn.toISOString(),
+        checkOut: original.checkOut.toISOString(),
+      },
+      newValues: {
+        checkIn: checkIn.toISOString(),
+        checkOut: checkOut.toISOString(),
+      },
+    });
+
+    const unchangedResponse = await editAdminReservation(
+      original.id,
+      user.id,
+      checkIn,
+      checkOut,
+    );
+    expect(unchangedResponse.status).toBe(200);
+    expect(
+      await prisma.reservationHistory.count({
+        where: { reservationId: original.id },
+      }),
+    ).toBe(1);
   });
 
   it("allows a guest to edit their own pending reservation", async () => {
@@ -513,6 +573,15 @@ describe("Reservation booking integration tests", () => {
     expect(response.body.status).toBe("PENDING");
     expect(Number(response.body.totalAmount)).toBe(300);
     expect(response.body.room.id).toBe(testRoomId);
+
+    const history = await prisma.reservationHistory.findFirstOrThrow({
+      where: { reservationId: original.id },
+    });
+    expect(history).toMatchObject({
+      actorId: user.id,
+      action: "UPDATED",
+      visibility: "GUEST_VISIBLE",
+    });
   });
 
   it("does not allow a guest to edit another guest's reservation", async () => {
@@ -637,6 +706,12 @@ describe("Reservation booking integration tests", () => {
         data: { status: "AVAILABLE" },
       });
     }
+
+    expect(
+      await prisma.reservationHistory.count({
+        where: { reservationId: original.id },
+      }),
+    ).toBe(0);
   });
 
   it("does not allow guests to edit reservations and rejects terminal reservations", async () => {

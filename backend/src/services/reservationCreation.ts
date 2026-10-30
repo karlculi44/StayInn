@@ -5,13 +5,81 @@ import { createWithReservationReference } from "../utils/reservationReference.js
 
 type CreateReservationInput = {
   userId: string;
+  actorId: string;
   roomId: string;
   checkIn: Date;
   checkOut: Date;
   guests: number;
 };
 
-type UpdateReservationInput = CreateReservationInput;
+type UpdateReservationInput = Omit<CreateReservationInput, "actorId">;
+type ReservationHistoryJson = {
+  [key: string]: Prisma.InputJsonValue | null;
+};
+
+const getReservationValues = (reservation: {
+  checkIn: Date;
+  checkOut: Date;
+  guests: number;
+  totalAmount: Prisma.Decimal;
+  room: { roomNumber: string; roomType: { name: string } };
+}) => ({
+  checkIn: reservation.checkIn.toISOString(),
+  checkOut: reservation.checkOut.toISOString(),
+  guests: reservation.guests,
+  room: `Room ${reservation.room.roomNumber} · ${reservation.room.roomType.name}`,
+  totalAmount: reservation.totalAmount.toString(),
+});
+
+const createUpdatedHistory = async (
+  tx: Prisma.TransactionClient,
+  input: {
+    reservationId: string;
+    actorId: string;
+    oldValues: ReservationHistoryJson;
+    newValues: ReservationHistoryJson;
+    guestChanged?: boolean;
+  },
+) => {
+  const oldValues: ReservationHistoryJson = {};
+  const newValues: ReservationHistoryJson = {};
+  const keys = new Set([
+    ...Object.keys(input.oldValues),
+    ...Object.keys(input.newValues),
+  ]);
+
+  for (const key of keys) {
+    const previousValue = input.oldValues[key] ?? null;
+    const nextValue = input.newValues[key] ?? null;
+    if (JSON.stringify(previousValue) !== JSON.stringify(nextValue)) {
+      oldValues[key] = previousValue;
+      newValues[key] = nextValue;
+    }
+  }
+
+  if (input.guestChanged) {
+    oldValues.guestChanged = false;
+    newValues.guestChanged = true;
+  }
+
+  if (Object.keys(newValues).length === 0) {
+    return false;
+  }
+
+  await tx.reservationHistory.create({
+    data: {
+      reservationId: input.reservationId,
+      actorId: input.actorId,
+      action: "UPDATED",
+      description: "Reservation details have been updated.",
+      oldValues,
+      newValues,
+      visibility: "GUEST_VISIBLE",
+    },
+  });
+
+  return true;
+};
 
 const lockRoomsInOrder = async (
   tx: Prisma.TransactionClient,
@@ -92,6 +160,7 @@ const calculateTotalAmount = (
 
 export const createReservationForUser = async ({
   userId,
+  actorId,
   roomId,
   checkIn,
   checkOut,
@@ -131,7 +200,7 @@ export const createReservationForUser = async ({
         checkOut,
       );
 
-      return tx.reservation.create({
+      const reservation = await tx.reservation.create({
         data: {
           referenceId,
           checkIn,
@@ -157,11 +226,35 @@ export const createReservationForUser = async ({
           },
         },
       });
+
+      await tx.reservationHistory.create({
+        data: {
+          reservationId: reservation.id,
+          actorId,
+          action: "CREATED",
+          description:
+            actorId === userId
+              ? "Your reservation has been successfully received."
+              : "A reservation has been created for you.",
+          newValues: {
+            status: reservation.status,
+            checkIn: reservation.checkIn.toISOString(),
+            checkOut: reservation.checkOut.toISOString(),
+            guests: reservation.guests,
+            room: `Room ${room.roomNumber} · ${room.roomType.name}`,
+            totalAmount: reservation.totalAmount.toString(),
+          },
+          visibility: "GUEST_VISIBLE",
+        },
+      });
+
+      return reservation;
     }),
   );
 
 export const updateReservationForAdmin = async (
   id: string,
+  actorId: string,
   {
     userId,
     roomId,
@@ -184,6 +277,7 @@ export const updateReservationForAdmin = async (
 
     const reservation = await tx.reservation.findUnique({
       where: { id },
+      include: { room: { include: { roomType: true } } },
     });
 
     if (!reservation) {
@@ -226,6 +320,40 @@ export const updateReservationForAdmin = async (
       checkOut,
     );
 
+    const oldValues = getReservationValues(reservation);
+    const nextValues = getReservationValues({
+      checkIn,
+      checkOut,
+      guests,
+      totalAmount: new Prisma.Decimal(totalAmount),
+      room,
+    });
+    const guestChanged = reservation.userId !== userId;
+    const changed = await createUpdatedHistory(tx, {
+      reservationId: id,
+      actorId,
+      oldValues,
+      newValues: nextValues,
+      guestChanged,
+    });
+
+    if (!changed) {
+      return tx.reservation.findUniqueOrThrow({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          room: { include: { roomType: true } },
+        },
+      });
+    }
+
     return tx.reservation.update({
       where: { id },
       data: {
@@ -257,7 +385,13 @@ export const updateReservationForAdmin = async (
 export const updateReservationForGuest = async (
   id: string,
   userId: string,
-  { roomId, checkIn, checkOut, guests }: Omit<CreateReservationInput, "userId">,
+  actorId: string,
+  {
+    roomId,
+    checkIn,
+    checkOut,
+    guests,
+  }: Omit<CreateReservationInput, "userId" | "actorId">,
 ) =>
   prisma.$transaction(async (tx) => {
     const lockedReservations = await tx.$queryRaw<{ id: string }[]>`
@@ -273,6 +407,7 @@ export const updateReservationForGuest = async (
 
     const reservation = await tx.reservation.findUnique({
       where: { id },
+      include: { room: { include: { roomType: true } } },
     });
 
     if (!reservation || reservation.userId !== userId) {
@@ -302,6 +437,30 @@ export const updateReservationForGuest = async (
       checkIn,
       checkOut,
     );
+
+    const oldValues = getReservationValues(reservation);
+    const nextValues = getReservationValues({
+      checkIn,
+      checkOut,
+      guests,
+      totalAmount: new Prisma.Decimal(totalAmount),
+      room,
+    });
+    const changed = await createUpdatedHistory(tx, {
+      reservationId: id,
+      actorId,
+      oldValues,
+      newValues: nextValues,
+    });
+
+    if (!changed) {
+      return tx.reservation.findUniqueOrThrow({
+        where: { id },
+        include: {
+          room: { include: { roomType: true } },
+        },
+      });
+    }
 
     return tx.reservation.update({
       where: { id },

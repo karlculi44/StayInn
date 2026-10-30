@@ -8,6 +8,7 @@ export type AdminReservation = {
   id: string;
   referenceId: string;
   createdAt: string;
+  updatedAt: string;
   checkIn: string;
   checkOut: string;
   guests: number;

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import ConfirmCancelReservationModal from "../../components/ui/ConfirmCancelReservationModal";
 import ReservationStatusBadge from "../../components/ui/ReservationStatus";
+import ReservationHistoryTimeline from "../../components/ui/ReservationHistoryTimeline";
 import { ErrorState, Loading } from "../../components/ui/States";
 import {
   getAdminReservation,
@@ -718,6 +719,13 @@ export default function ReservationDetails() {
             onCancel={() => setCancelReservationId(null)}
             onConfirm={() => void changeStatus("CANCELLED")}
           />
+          {reservation && !isEditing && (
+            <ReservationHistoryTimeline
+              reservationId={reservation.id}
+              isAdmin
+              refreshKey={reservation.updatedAt}
+            />
+          )}
         </>
       ) : null}
     </div>
