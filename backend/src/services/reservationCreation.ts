@@ -14,7 +14,9 @@ type CreateReservationInput = {
   guests: number;
 };
 
-type UpdateReservationInput = Omit<CreateReservationInput, "actorId">;
+type UpdateReservationInput = Omit<CreateReservationInput, "actorId"> & {
+  reason: string;
+};
 type ReservationHistoryJson = {
   [key: string]: Prisma.InputJsonValue | null;
 };
@@ -41,6 +43,7 @@ const createUpdatedHistory = async (
     oldValues: ReservationHistoryJson;
     newValues: ReservationHistoryJson;
     guestChanged?: boolean;
+    description?: string;
   },
 ) => {
   const oldValues: ReservationHistoryJson = {};
@@ -73,7 +76,8 @@ const createUpdatedHistory = async (
       reservationId: input.reservationId,
       actorId: input.actorId,
       action: "UPDATED",
-      description: "Reservation details have been updated.",
+      description:
+        input.description ?? "Reservation details have been updated.",
       oldValues,
       newValues,
       visibility: "GUEST_VISIBLE",
@@ -83,7 +87,7 @@ const createUpdatedHistory = async (
   return true;
 };
 
-const lockRoomsInOrder = async (
+export const lockRoomsInOrder = async (
   tx: Prisma.TransactionClient,
   roomIds: string[],
 ) => {
@@ -100,7 +104,7 @@ const lockRoomsInOrder = async (
   );
 };
 
-const getRoomForBooking = async (
+export const getRoomForBooking = async (
   tx: Prisma.TransactionClient,
   roomId: string,
   checkIn: Date,
@@ -147,7 +151,7 @@ const getRoomForBooking = async (
   return room;
 };
 
-const calculateTotalAmount = (
+export const calculateTotalAmount = (
   pricePerNight: Prisma.Decimal,
   checkIn: Date,
   checkOut: Date,
@@ -286,6 +290,7 @@ export const updateReservationForAdmin = async (
     checkIn,
     checkOut,
     guests,
+    reason,
   }: UpdateReservationInput,
 ) =>
   prisma.$transaction(async (tx) => {
@@ -360,6 +365,7 @@ export const updateReservationForAdmin = async (
       oldValues,
       newValues: nextValues,
       guestChanged,
+      description: `Reservation details were updated by an administrator. Reason: ${reason}`,
     });
 
     if (!changed) {
@@ -379,7 +385,7 @@ export const updateReservationForAdmin = async (
       });
     }
 
-    return tx.reservation.update({
+    const updatedReservation = await tx.reservation.update({
       where: { id },
       data: {
         userId,
@@ -405,6 +411,15 @@ export const updateReservationForAdmin = async (
         },
       },
     });
+    await createNotification(tx, {
+      type: "RESERVATION_REQUEST_REVIEWED",
+      title: "Reservation updated by StayInn",
+      message: `Your reservation ${updatedReservation.referenceId} was updated by an administrator. Reason: ${reason}`,
+      referenceId: updatedReservation.id,
+      referenceType: "RESERVATION",
+      recipientIds: [userId],
+    });
+    return updatedReservation;
   });
 
 export const updateReservationForGuest = async (

@@ -1,6 +1,10 @@
 export type Notification = {
   id: string;
-  type: "RESERVATION_STATUS_UPDATED" | "NEW_RESERVATION";
+  type:
+    | "RESERVATION_STATUS_UPDATED"
+    | "NEW_RESERVATION"
+    | "RESERVATION_REQUEST_SUBMITTED"
+    | "RESERVATION_REQUEST_REVIEWED";
   title: string;
   message: string;
   referenceId: string | null;

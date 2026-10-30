@@ -15,6 +15,12 @@ const actionTitles: Record<ReservationHistoryAction, string> = {
   CANCELLED: "Reservation cancelled",
   UPDATED: "Reservation details updated",
   COMPLETED: "Reservation completed",
+  EDIT_REQUESTED: "Edit request submitted",
+  EDIT_APPROVED: "Edit request approved",
+  EDIT_REJECTED: "Edit request rejected",
+  CANCELLATION_REQUESTED: "Cancellation request submitted",
+  CANCELLATION_APPROVED: "Cancellation request approved",
+  CANCELLATION_REJECTED: "Cancellation request rejected",
 };
 
 function formatHistoryValue(key: string, value: ReservationHistoryValue) {
@@ -70,6 +76,10 @@ function HistoryIcon({ action }: { action: ReservationHistoryAction }) {
           ? "bg-red-100 text-red-700"
           : action === "CONFIRMED" || action === "COMPLETED"
             ? "bg-green-100 text-green-700"
+            : action.endsWith("_REJECTED")
+              ? "bg-red-100 text-red-700"
+              : action.endsWith("_APPROVED")
+                ? "bg-green-100 text-green-700"
             : "bg-sage/15 text-sage"
       }`}
     >
@@ -202,13 +212,27 @@ export default function ReservationHistoryTimeline({
               const oldValues = entry.oldValues ?? {};
               const newValues = entry.newValues ?? {};
               const changedFields =
-                entry.action === "UPDATED"
+                entry.action === "UPDATED" ||
+                entry.action === "EDIT_APPROVED"
                   ? Object.keys(newValues).filter(
-                      (key) => key in oldValues && key !== "guestChanged",
+                      (key) =>
+                        key in oldValues &&
+                        key !== "guestChanged" &&
+                        key !== "requestId",
                     )
-                  : ["CONFIRMED", "CANCELLED", "COMPLETED"].includes(
-                        entry.action,
+                  : entry.action === "EDIT_REQUESTED"
+                    ? Object.keys(newValues).filter(
+                        (key) =>
+                          key in oldValues &&
+                          key !== "status" &&
+                          key !== "requestId",
                       )
+                  : [
+                        "CONFIRMED",
+                        "CANCELLED",
+                        "COMPLETED",
+                        "CANCELLATION_APPROVED",
+                      ].includes(entry.action)
                     ? ["status"]
                     : [];
               const createdFields =

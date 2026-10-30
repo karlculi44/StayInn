@@ -13,6 +13,7 @@ import axios from "axios";
 import { Button } from "../../components/ui/Button";
 import { updateGuestReservation } from "../../services/reservation.service";
 import ReservationHistoryTimeline from "../../components/ui/ReservationHistoryTimeline";
+import GuestReservationRequests from "../../components/ui/GuestReservationRequests";
 
 const getTodayDateInput = () => {
   const today = new Date();
@@ -27,6 +28,8 @@ export default function ReservationDetails() {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [checkInInput, setCheckInInput] = useState("");
@@ -37,6 +40,7 @@ export default function ReservationDetails() {
   const [error, setError] = useState("");
   const [requestError, setRequestError] = useState("");
   const [failedImage, setFailedImage] = useState("");
+  const [historyRevision, setHistoryRevision] = useState(0);
 
   useEffect(() => {
     const fetchReservation = async () => {
@@ -68,11 +72,8 @@ export default function ReservationDetails() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this reservation?",
-    );
-
-    if (!confirmed) {
+    if (!cancelReason.trim()) {
+      setError("Enter a reason for cancelling this reservation.");
       return;
     }
 
@@ -80,10 +81,13 @@ export default function ReservationDetails() {
     setIsCancelling(true);
 
     try {
-      await cancelReservation(id);
+      await cancelReservation(id, cancelReason.trim());
 
       const updatedReservation = await getReservation(id);
       setReservation(updatedReservation);
+      setIsCancelDialogOpen(false);
+      setCancelReason("");
+      setHistoryRevision((revision) => revision + 1);
     } catch {
       setError("Unable to cancel this reservation.");
     } finally {
@@ -198,8 +202,7 @@ export default function ReservationDetails() {
   );
   const showRoomImage = roomImage && failedImage !== roomImage;
 
-  const canCancel =
-    reservation.status === "PENDING" || reservation.status === "CONFIRMED";
+  const canCancel = reservation.status === "PENDING";
   const canEdit = reservation.status === "PENDING";
 
   return (
@@ -380,7 +383,11 @@ export default function ReservationDetails() {
             {canCancel && (
               <button
                 type="button"
-                onClick={handleCancel}
+                onClick={() => {
+                  setError("");
+                  setCancelReason("");
+                  setIsCancelDialogOpen(true);
+                }}
                 disabled={isCancelling}
                 className="mt-6 text-sm font-semibold text-red-600 disabled:opacity-50"
               >
@@ -405,10 +412,75 @@ export default function ReservationDetails() {
           </section>
         </div>
       </div>
+      <div className="mt-8 space-y-6">
+        <GuestReservationRequests
+          reservation={reservation}
+          onChanged={() => setHistoryRevision((revision) => revision + 1)}
+        />
+      </div>
+      {isCancelDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isCancelling) {
+              setIsCancelDialogOpen(false);
+            }
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="guest-cancel-title"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          >
+            <h2 id="guest-cancel-title" className="font-display text-2xl">
+              Cancel reservation?
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              This cancels your pending reservation. Confirmed reservations
+              must be cancelled through a request.
+            </p>
+            <label className="mt-4 block text-sm font-medium">
+              Reason for cancellation
+              <textarea
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                maxLength={1000}
+                rows={4}
+                required
+                className="mt-2 w-full rounded-xl border border-black/10 px-4 py-3"
+              />
+            </label>
+            {error && (
+              <p role="alert" className="mt-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsCancelDialogOpen(false)}
+                disabled={isCancelling}
+              >
+                Keep reservation
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleCancel()}
+                disabled={isCancelling || !cancelReason.trim()}
+              >
+                {isCancelling ? "Cancelling..." : "Cancel reservation"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mt-8">
         <ReservationHistoryTimeline
           reservationId={reservation.id}
-          refreshKey={reservation.updatedAt}
+          refreshKey={`${reservation.updatedAt}-${historyRevision}`}
         />
       </div>
     </div>

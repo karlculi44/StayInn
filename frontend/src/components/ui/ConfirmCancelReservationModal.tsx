@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { adminRaisedLight, adminRaisedRed } from "./adminButtonStyles";
 
 type ConfirmCancelReservationModalProps = {
@@ -6,7 +7,7 @@ type ConfirmCancelReservationModalProps = {
   isCancelling: boolean;
   error?: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (reason: string) => void;
 };
 
 export default function ConfirmCancelReservationModal({
@@ -17,6 +18,8 @@ export default function ConfirmCancelReservationModal({
   onCancel,
   onConfirm,
 }: ConfirmCancelReservationModalProps) {
+  const [reason, setReason] = useState("");
+
   if (!isOpen) {
     return null;
   }
@@ -63,6 +66,18 @@ export default function ConfirmCancelReservationModal({
           </div>
         </div>
 
+        <label className="mt-4 block text-sm font-medium">
+          Cancellation reason
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={1000}
+            rows={3}
+            required
+            className="mt-2 w-full rounded-xl border border-black/10 px-4 py-3"
+          />
+        </label>
+
         {error && (
           <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
             {error}
@@ -80,8 +95,8 @@ export default function ConfirmCancelReservationModal({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            disabled={isCancelling}
+            onClick={() => onConfirm(reason.trim())}
+            disabled={isCancelling || !reason.trim()}
             className={`rounded-xl px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${adminRaisedRed}`}
           >
             {isCancelling ? "Cancelling..." : "Cancel reservation"}

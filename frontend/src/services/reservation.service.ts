@@ -5,6 +5,7 @@ import type {
 } from "../types/admin-reservation";
 import type { Reservation } from "../types/reservation";
 import type { ReservationHistory } from "../types/reservation-history";
+import type { ReservationRequest } from "../types/reservation-request";
 
 export const getReservations = async (): Promise<Reservation[]> => {
   try {
@@ -31,8 +32,8 @@ export const getReservationHistory = async (
   return response.data;
 };
 
-export const cancelReservation = async (id: string) => {
-  const response = await api.patch(`/reservations/${id}/cancel`);
+export const cancelReservation = async (id: string, reason: string) => {
+  const response = await api.patch(`/reservations/${id}/cancel`, { reason });
 
   return response.data;
 };
@@ -51,6 +52,49 @@ export const updateGuestReservation = async (
     reservation,
   );
 
+  return response.data;
+};
+
+export const getReservationRequests = async (
+  id: string,
+): Promise<ReservationRequest[]> => {
+  const response = await api.get<ReservationRequest[]>(
+    `/reservations/${id}/requests`,
+  );
+  return response.data;
+};
+
+export const submitReservationRequest = async (
+  id: string,
+  request:
+    | {
+        type: "EDIT";
+        reason: string;
+        proposedChanges: {
+          roomId: string;
+          checkIn: string;
+          checkOut: string;
+          guests: number;
+        };
+      }
+    | { type: "CANCELLATION"; reason: string },
+): Promise<ReservationRequest> => {
+  const response = await api.post<ReservationRequest>(
+    `/reservations/${id}/requests`,
+    request,
+  );
+  return response.data;
+};
+
+export const reviewReservationRequest = async (
+  requestId: string,
+  decision: "APPROVED" | "REJECTED",
+  reviewReason: string,
+): Promise<ReservationRequest> => {
+  const response = await api.patch<ReservationRequest>(
+    `/reservations/requests/${requestId}/review`,
+    { decision, reviewReason },
+  );
   return response.data;
 };
 
@@ -89,11 +133,13 @@ export const getAdminReservation = async (
 export const updateReservationStatus = async (
   id: string,
   status: ReservationStatus,
+  reason?: string,
 ) => {
   const response = await api.patch<{ status: ReservationStatus }>(
     `/reservations/${id}/status`,
     {
     status,
+    ...(reason ? { reason } : {}),
     },
   );
 
@@ -123,6 +169,7 @@ export const updateAdminReservation = async (
     checkIn: string;
     checkOut: string;
     guests: number;
+    reason: string;
   },
 ): Promise<AdminReservation> => {
   const response = await api.patch<AdminReservation>(

@@ -3,7 +3,13 @@ export type ReservationHistoryAction =
   | "CONFIRMED"
   | "CANCELLED"
   | "UPDATED"
-  | "COMPLETED";
+  | "COMPLETED"
+  | "EDIT_REQUESTED"
+  | "EDIT_APPROVED"
+  | "EDIT_REJECTED"
+  | "CANCELLATION_REQUESTED"
+  | "CANCELLATION_APPROVED"
+  | "CANCELLATION_REJECTED";
 
 export type ReservationHistoryVisibility = "ADMIN_ONLY" | "GUEST_VISIBLE";
 

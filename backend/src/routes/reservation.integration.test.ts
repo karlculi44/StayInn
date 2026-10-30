@@ -118,6 +118,7 @@ const editAdminReservation = async (
       checkIn: checkIn.toISOString(),
       checkOut: checkOut.toISOString(),
       guests,
+      reason: "Guest requested a reservation adjustment.",
     });
 
 const editGuestReservation = async (
@@ -143,6 +144,23 @@ const editGuestReservation = async (
       checkOut: checkOut.toISOString(),
       guests,
     });
+};
+
+const submitGuestRequest = (
+  reservationId: string,
+  userId: string,
+  body: Record<string, unknown>,
+) => {
+  const token = jwt.sign(
+    { userId, role: "GUEST" },
+    process.env.JWT_ACCESS_TOKEN_SECRET as string,
+    { expiresIn: "5m" },
+  );
+
+  return request(app)
+    .post(`/api/reservations/${reservationId}/requests`)
+    .set("Cookie", `accessToken=${token}`)
+    .send(body);
 };
 
 describe("Reservation booking integration tests", () => {
@@ -215,6 +233,9 @@ describe("Reservation booking integration tests", () => {
       const reservationIds = reservations.map(({ id }) => id);
 
       if (reservationIds.length > 0) {
+        await prisma.reservationRequest.deleteMany({
+          where: { reservationId: { in: reservationIds } },
+        });
         await prisma.reservationHistory.deleteMany({
           where: { reservationId: { in: reservationIds } },
         });
@@ -756,6 +777,8 @@ describe("Reservation booking integration tests", () => {
     expect(history[0]).toMatchObject({
       actorId: adminId,
       action: "UPDATED",
+      description:
+        "Reservation details were updated by an administrator. Reason: Guest requested a reservation adjustment.",
       oldValues: {
         checkIn: original.checkIn.toISOString(),
         checkOut: original.checkOut.toISOString(),
@@ -807,11 +830,233 @@ describe("Reservation booking integration tests", () => {
     const history = await prisma.reservationHistory.findFirstOrThrow({
       where: { reservationId: original.id },
     });
+
     expect(history).toMatchObject({
       actorId: user.id,
       action: "UPDATED",
       visibility: "GUEST_VISIBLE",
     });
+  });
+
+  it("submits and approves an edit request with recalculated price and notifications", async () => {
+    const user = await createTestUser();
+    const reservation = await createExistingReservation(
+      user.id,
+      futureDate(60),
+      futureDate(62),
+      "CONFIRMED",
+    );
+    const checkIn = futureDate(64);
+    const checkOut = futureDate(67);
+
+    const submitted = await submitGuestRequest(reservation.id, user.id, {
+      type: "EDIT",
+      reason: "Our travel dates changed.",
+      proposedChanges: {
+        roomId: testRoomId,
+        checkIn: checkIn.toISOString(),
+        checkOut: checkOut.toISOString(),
+        guests: 1,
+      },
+    });
+
+    expect(submitted.status).toBe(201);
+    expect(submitted.body).toMatchObject({
+      reservationId: reservation.id,
+      guestId: user.id,
+      type: "EDIT",
+      status: "PENDING",
+      reason: "Our travel dates changed.",
+    });
+
+    const duplicate = await submitGuestRequest(reservation.id, user.id, {
+      type: "CANCELLATION",
+      reason: "Plans changed.",
+    });
+    expect(duplicate.status).toBe(409);
+
+    const adminNotifications = await prisma.notification.findMany({
+      where: {
+        type: "RESERVATION_REQUEST_SUBMITTED",
+        referenceId: reservation.id,
+        recipients: { some: { userId: adminId } },
+      },
+    });
+    expect(adminNotifications).toHaveLength(1);
+    expect(
+      await prisma.reservationHistory.count({
+        where: {
+          reservationId: reservation.id,
+          action: "EDIT_REQUESTED",
+        },
+      }),
+    ).toBe(1);
+
+    const reviewed = await request(app)
+      .patch(`/api/reservations/requests/${submitted.body.id}/review`)
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        decision: "APPROVED",
+        reviewReason: "The updated dates are available.",
+      });
+
+    expect(reviewed.status).toBe(200);
+    expect(reviewed.body).toMatchObject({
+      id: submitted.body.id,
+      status: "APPROVED",
+      reviewReason: "The updated dates are available.",
+      reviewedBy: adminId,
+    });
+
+    const updatedReservation = await prisma.reservation.findUniqueOrThrow({
+      where: { id: reservation.id },
+    });
+    expect(updatedReservation.checkIn.toISOString()).toBe(checkIn.toISOString());
+    expect(updatedReservation.checkOut.toISOString()).toBe(checkOut.toISOString());
+    expect(updatedReservation.guests).toBe(1);
+    expect(Number(updatedReservation.totalAmount)).toBe(300);
+
+    const guestNotifications = await prisma.notification.findMany({
+      where: {
+        type: "RESERVATION_REQUEST_REVIEWED",
+        referenceId: reservation.id,
+        recipients: { some: { userId: user.id } },
+      },
+    });
+    expect(guestNotifications).toHaveLength(1);
+    expect(
+      await prisma.reservationHistory.count({
+        where: {
+          reservationId: reservation.id,
+          action: "EDIT_APPROVED",
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it("hides requests from other guests and lets admins reject cancellation requests", async () => {
+    const user = await createTestUser();
+    const otherUser = await createTestUser();
+    const reservation = await createExistingReservation(
+      user.id,
+      futureDate(70),
+      futureDate(72),
+      "CONFIRMED",
+    );
+
+    const forbiddenRequest = await submitGuestRequest(
+      reservation.id,
+      otherUser.id,
+      { type: "CANCELLATION", reason: "Please cancel this stay." },
+    );
+    expect(forbiddenRequest.status).toBe(404);
+
+    const submitted = await submitGuestRequest(reservation.id, user.id, {
+      type: "CANCELLATION",
+      reason: "I can no longer travel.",
+    });
+    expect(submitted.status).toBe(201);
+
+    const reviewed = await request(app)
+      .patch(`/api/reservations/requests/${submitted.body.id}/review`)
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        decision: "REJECTED",
+        reviewReason: "The reservation cannot be cancelled at this time.",
+      });
+
+    expect(reviewed.status).toBe(200);
+    expect(reviewed.body.status).toBe("REJECTED");
+    expect(
+      await prisma.reservation.findUniqueOrThrow({
+        where: { id: reservation.id },
+      }),
+    ).toMatchObject({ status: "CONFIRMED" });
+    expect(
+      await prisma.reservationHistory.count({
+        where: {
+          reservationId: reservation.id,
+          action: "CANCELLATION_REJECTED",
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it("approves cancellation requests and rejects stale edit proposals", async () => {
+    const user = await createTestUser();
+    const cancellationReservation = await createExistingReservation(
+      user.id,
+      futureDate(76),
+      futureDate(78),
+      "CONFIRMED",
+    );
+    const cancellationRequest = await submitGuestRequest(
+      cancellationReservation.id,
+      user.id,
+      {
+        type: "CANCELLATION",
+        reason: "My plans have changed.",
+      },
+    );
+
+    const cancellationReview = await request(app)
+      .patch(`/api/reservations/requests/${cancellationRequest.body.id}/review`)
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        decision: "APPROVED",
+        reviewReason: "Cancellation approved.",
+      });
+
+    expect(cancellationReview.status).toBe(200);
+    expect(
+      await prisma.reservation.findUniqueOrThrow({
+        where: { id: cancellationReservation.id },
+      }),
+    ).toMatchObject({ status: "CANCELLED" });
+
+    const staleReservation = await createExistingReservation(
+      user.id,
+      futureDate(80),
+      futureDate(82),
+      "CONFIRMED",
+    );
+    const staleRequest = await submitGuestRequest(staleReservation.id, user.id, {
+      type: "EDIT",
+      reason: "Please move my dates.",
+      proposedChanges: {
+        roomId: testRoomId,
+        checkIn: futureDate(84).toISOString(),
+        checkOut: futureDate(86).toISOString(),
+        guests: 1,
+      },
+    });
+
+    await prisma.reservation.update({
+      where: { id: staleReservation.id },
+      data: { guests: 1 },
+    });
+    const staleReview = await request(app)
+      .patch(`/api/reservations/requests/${staleRequest.body.id}/review`)
+      .set("Cookie", `accessToken=${accessToken}`)
+      .send({
+        decision: "APPROVED",
+        reviewReason: "The reservation changed after submission.",
+      });
+
+    expect(staleReview.status).toBe(409);
+    expect(staleReview.body.message).toContain(
+      "The reservation changed after this request was submitted",
+    );
+    expect(
+      await prisma.reservationRequest.findUniqueOrThrow({
+        where: { id: staleRequest.body.id },
+      }),
+    ).toMatchObject({ status: "PENDING" });
+    expect(
+      await prisma.reservation.findUniqueOrThrow({
+        where: { id: staleReservation.id },
+      }),
+    ).toMatchObject({ status: "CONFIRMED", guests: 1 });
   });
 
   it("does not allow a guest to edit another guest's reservation", async () => {

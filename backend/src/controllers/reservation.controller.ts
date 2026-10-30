@@ -70,7 +70,7 @@ export const updateAdminReservation = asyncHandler(
     }
 
     const id = getStringParam(req.params.id, "reservation ID");
-    const { userId, roomId, checkIn, checkOut, guests } = req.body;
+    const { userId, roomId, checkIn, checkOut, guests, reason } = req.body;
 
     const actorId = req.user.userId;
     const reservation = await updateReservationForAdmin(id, actorId, {
@@ -79,6 +79,7 @@ export const updateAdminReservation = asyncHandler(
         checkIn,
         checkOut,
         guests,
+        reason,
     });
 
     res.json(reservation);
@@ -223,6 +224,7 @@ export const cancelReservation = asyncHandler(
 
     const id = getStringParam(req.params.id, "reservation ID");
     const actorId = req.user.userId;
+    const { reason } = req.body;
 
     const cancelledReservation = await prisma.$transaction(async (tx) => {
       const lockedReservations = await tx.$queryRaw<{ id: string }[]>`
@@ -253,7 +255,17 @@ export const cancelReservation = asyncHandler(
       }
 
       if (reservation.status === "COMPLETED") {
-        throw new AppError("Completed reservations cannot be cancelled", 400);
+        throw new AppError(
+          "Completed reservations cannot be cancelled",
+          400,
+        );
+      }
+
+      if (reservation.status !== "PENDING") {
+        throw new AppError(
+          "Only pending reservations can be cancelled directly. Submit a cancellation request for confirmed reservations.",
+          400,
+        );
       }
 
       const updated = await tx.reservation.update({
@@ -266,9 +278,9 @@ export const cancelReservation = asyncHandler(
           reservationId: reservation.id,
           actorId,
           action: "CANCELLED",
-          description: "Your reservation has been cancelled.",
+          description: `Your pending reservation has been cancelled. Reason: ${reason}`,
           oldValues: { status: reservation.status },
-          newValues: { status: "CANCELLED" },
+          newValues: { status: "CANCELLED", reason },
           visibility: "GUEST_VISIBLE",
         },
       });
@@ -362,7 +374,7 @@ export const updateReservationStatus = asyncHandler(
     }
 
     const id = getStringParam(req.params.id, "reservation ID");
-    const { status } = req.body;
+    const { status, reason } = req.body;
     const actorId = req.user.userId;
 
     const updatedReservation = await prisma.$transaction(async (transaction) => {
@@ -407,7 +419,7 @@ export const updateReservationStatus = asyncHandler(
           break;
         case "CANCELLED":
           action = "CANCELLED";
-          description = "Your reservation has been cancelled.";
+          description = `Your reservation has been cancelled by StayInn. Reason: ${reason}`;
           break;
         case "COMPLETED":
           action = "COMPLETED";
@@ -432,8 +444,12 @@ export const updateReservationStatus = asyncHandler(
       if (reservation.userId) {
         await createNotification(transaction, {
           type: "RESERVATION_STATUS_UPDATED",
-          title: "Reservation status updated",
-          message: `Your reservation ${reservation.referenceId} is now ${status.toLowerCase()}.`,
+          title: status === "CANCELLED"
+            ? "Reservation cancelled by StayInn"
+            : "Reservation status updated",
+          message: status === "CANCELLED"
+            ? `Your reservation ${reservation.referenceId} was cancelled by an administrator. Reason: ${reason}`
+            : `Your reservation ${reservation.referenceId} is now ${status.toLowerCase()}.`,
           referenceId: reservation.id,
           referenceType: "RESERVATION",
           recipientIds: [reservation.userId],

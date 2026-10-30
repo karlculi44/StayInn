@@ -7,6 +7,9 @@ import {
   updateAdminReservationSchema,
   adminReservationQuerySchema,
   updateReservationStatusSchema,
+  guestReservationRequestSchema,
+  reviewReservationRequestSchema,
+  cancelReservationSchema,
 } from "../schemas/reservation.schema.js";
 import {
   createReservation,
@@ -21,6 +24,11 @@ import {
   updateGuestReservation,
   getReservationHistory,
 } from "../controllers/reservation.controller.js";
+import {
+  getReservationRequests,
+  reviewReservationRequestController,
+  submitReservationRequest,
+} from "../controllers/reservationRequest.controller.js";
 import { verifyToken, authorize } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -47,6 +55,21 @@ router.get(
   getAdminReservationById,
 );
 router.get("/:id/history", verifyToken, getReservationHistory);
+router.get("/:id/requests", verifyToken, getReservationRequests);
+router.post(
+  "/:id/requests",
+  verifyToken,
+  authorize("GUEST"),
+  validate(guestReservationRequestSchema),
+  submitReservationRequest,
+);
+router.patch(
+  "/requests/:requestId/review",
+  verifyToken,
+  authorize("ADMIN"),
+  validate(reviewReservationRequestSchema),
+  reviewReservationRequestController,
+);
 router.patch(
   "/admin/:id",
   verifyToken,
@@ -62,7 +85,13 @@ router.patch(
   validate(updateGuestReservationSchema),
   updateGuestReservation,
 );
-router.patch("/:id/cancel", verifyToken, cancelReservation);
+router.patch(
+  "/:id/cancel",
+  verifyToken,
+  authorize("GUEST"),
+  validate(cancelReservationSchema),
+  cancelReservation,
+);
 router.patch(
   "/:id/status",
   verifyToken,

@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import ConfirmCancelReservationModal from "../../components/ui/ConfirmCancelReservationModal";
 import ReservationStatusBadge from "../../components/ui/ReservationStatus";
 import ReservationHistoryTimeline from "../../components/ui/ReservationHistoryTimeline";
+import AdminReservationRequests from "../../components/ui/AdminReservationRequests";
 import { ErrorState, Loading } from "../../components/ui/States";
 import {
   getAdminReservation,
@@ -113,6 +114,7 @@ export default function ReservationDetails() {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guestCount, setGuestCount] = useState("1");
+  const [editReason, setEditReason] = useState("");
   const [rooms, setRooms] = useState<RoomListing[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
@@ -120,6 +122,7 @@ export default function ReservationDetails() {
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [guestError, setGuestError] = useState("");
   const roomRequestId = useRef(0);
+  const [historyRevision, setHistoryRevision] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -241,6 +244,7 @@ export default function ReservationDetails() {
 
     setActionError("");
     setSuccessMessage("");
+    setEditReason("");
     setGuestError("");
     setIsLoadingGuests(true);
     setEditingReservationId(reservation.id);
@@ -281,6 +285,10 @@ export default function ReservationDetails() {
       setActionError("Select a guest and an available room.");
       return;
     }
+    if (!editReason.trim()) {
+      setActionError("An explanation is required for administrative edits.");
+      return;
+    }
     if (checkIn < getLocalDateInput() || !checkOut || checkOut <= checkIn) {
       setActionError("Choose valid check-in and check-out dates.");
       return;
@@ -307,6 +315,7 @@ export default function ReservationDetails() {
         checkIn,
         checkOut,
         guests,
+        reason: editReason.trim(),
       });
       setReservationResult({
         id: reservation.id,
@@ -323,7 +332,7 @@ export default function ReservationDetails() {
     }
   };
 
-  const changeStatus = async (status: ReservationStatus) => {
+  const changeStatus = async (status: ReservationStatus, reason?: string) => {
     if (!reservation) {
       return;
     }
@@ -331,8 +340,9 @@ export default function ReservationDetails() {
     setActionError("");
     setSuccessMessage("");
     try {
-      await updateReservationStatus(reservation.id, status);
+      await updateReservationStatus(reservation.id, status, reason);
       await refreshReservation();
+      setHistoryRevision((revision) => revision + 1);
       setCancelReservationId(null);
       setCancelError("");
       setSuccessMessage(
@@ -578,6 +588,17 @@ export default function ReservationDetails() {
                 {nights} night{nights === 1 ? "" : "s"} · Final price is
                 calculated by the server.
               </p>
+              <label className="block text-sm font-medium">
+                Reason for this administrative change
+                <textarea
+                  value={editReason}
+                  onChange={(event) => setEditReason(event.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  required
+                  className="mt-2 w-full rounded-xl border border-black/10 px-4 py-3"
+                />
+              </label>
               <div className="flex flex-wrap justify-end gap-3">
                 <button
                   type="button"
@@ -711,19 +732,28 @@ export default function ReservationDetails() {
               </section>
             </div>
           )}
+          {!isEditing && (
+            <AdminReservationRequests
+              reservation={reservation}
+              onChanged={async () => {
+                await refreshReservation();
+                setHistoryRevision((revision) => revision + 1);
+              }}
+            />
+          )}
           <ConfirmCancelReservationModal
             isOpen={isCancelOpen}
             referenceId={reservation.referenceId}
             isCancelling={isUpdatingStatus}
             error={cancelError}
             onCancel={() => setCancelReservationId(null)}
-            onConfirm={() => void changeStatus("CANCELLED")}
+            onConfirm={(reason) => void changeStatus("CANCELLED", reason)}
           />
           {reservation && !isEditing && (
             <ReservationHistoryTimeline
               reservationId={reservation.id}
               isAdmin
-              refreshKey={reservation.updatedAt}
+              refreshKey={`${reservation.updatedAt}-${historyRevision}`}
             />
           )}
         </>

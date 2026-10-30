@@ -22,6 +22,8 @@ model User {
   roomStatusChanges      RoomStatusHistory[]     @relation("RoomStatusChangedBy")
   notificationRecipients NotificationRecipient[]
   reservationHistory     ReservationHistory[]    @relation("ReservationHistoryActor")
+  reservationRequests    ReservationRequest[]    @relation("ReservationRequestGuest")
+  reviewedRequests       ReservationRequest[]    @relation("ReservationRequestReviewer")
 }
 
 enum Role {
@@ -98,7 +100,8 @@ model Reservation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  history ReservationHistory[]
+  history  ReservationHistory[]
+  requests ReservationRequest[]
 }
 
 enum ReservationStatus {
@@ -132,6 +135,12 @@ enum ReservationHistoryAction {
   CANCELLED
   UPDATED
   COMPLETED
+  EDIT_REQUESTED
+  EDIT_APPROVED
+  EDIT_REJECTED
+  CANCELLATION_REQUESTED
+  CANCELLATION_APPROVED
+  CANCELLATION_REJECTED
 }
 
 enum ReservationHistoryVisibility {
@@ -169,10 +178,46 @@ model NotificationRecipient {
 enum NotificationType {
   RESERVATION_STATUS_UPDATED
   NEW_RESERVATION
+  RESERVATION_REQUEST_SUBMITTED
+  RESERVATION_REQUEST_REVIEWED
 }
 
 enum NotificationReferenceType {
   RESERVATION
+}
+
+model ReservationRequest {
+  id              String                   @id @default(uuid())
+  reservationId   String
+  reservation     Reservation              @relation(fields: [reservationId], references: [id], onDelete: Restrict)
+  guestId         String?
+  guest           User?                    @relation("ReservationRequestGuest", fields: [guestId], references: [id], onDelete: SetNull)
+  type            ReservationRequestType
+  status          ReservationRequestStatus @default(PENDING)
+  reason          String
+  originalValues  Json
+  proposedChanges Json?
+  reviewedBy      String?
+  reviewer        User?                    @relation("ReservationRequestReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewReason    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([reservationId, createdAt])
+  @@index([guestId, status])
+  @@index([status, createdAt])
+}
+
+enum ReservationRequestType {
+  EDIT
+  CANCELLATION
+}
+
+enum ReservationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model RefreshToken {

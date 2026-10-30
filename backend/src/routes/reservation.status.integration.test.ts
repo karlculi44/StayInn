@@ -225,7 +225,8 @@ describe("Reservation cancellation and status transitions", () => {
 
     const response = await request(app)
       .patch(`/api/reservations/${reservation.id}/cancel`)
-      .set("Cookie", authCookie(guestId, "GUEST"));
+      .set("Cookie", authCookie(guestId, "GUEST"))
+      .send({ reason: "I can no longer make this trip." });
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("CANCELLED");
@@ -252,7 +253,8 @@ describe("Reservation cancellation and status transitions", () => {
 
     const response = await request(app)
       .patch(`/api/reservations/${reservation.id}/cancel`)
-      .set("Cookie", authCookie(otherGuestId, "GUEST"));
+      .set("Cookie", authCookie(otherGuestId, "GUEST"))
+      .send({ reason: "I can no longer make this trip." });
 
     expect(response.status).toBe(403);
     expect(response.body.message).toBe("Access denied");
@@ -263,7 +265,8 @@ describe("Reservation cancellation and status transitions", () => {
 
     const response = await request(app)
       .patch(`/api/reservations/${reservation.id}/cancel`)
-      .set("Cookie", authCookie(guestId, "GUEST"));
+      .set("Cookie", authCookie(guestId, "GUEST"))
+      .send({ reason: "I can no longer make this trip." });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toBe("Reservation is already cancelled");
@@ -274,7 +277,8 @@ describe("Reservation cancellation and status transitions", () => {
 
     const response = await request(app)
       .patch(`/api/reservations/${reservation.id}/cancel`)
-      .set("Cookie", authCookie(guestId, "GUEST"));
+      .set("Cookie", authCookie(guestId, "GUEST"))
+      .send({ reason: "I can no longer make this trip." });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toBe(
